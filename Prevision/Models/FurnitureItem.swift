@@ -1,22 +1,11 @@
 import Foundation
 import simd
 
-struct FurnitureItem: Identifiable, Codable, Hashable {
+struct FurnitureItem: Identifiable, Hashable, Codable {
     let id: String
     let name: String
-    let usdz: String
-    let widthInches: Double
-    let depthInches: Double
-    let heightInches: Double
-    let sourceUnit: String
+    let url: URL
+    let targetSizeMeters: SIMD3<Float>?
     let zUp: Bool
-
-    var targetSizeMeters: SIMD3<Float> {
-        let inchesToMeters: Float = 0.0254
-        return SIMD3<Float>(
-            Float(widthInches) * inchesToMeters,
-            Float(heightInches) * inchesToMeters,
-            Float(depthInches) * inchesToMeters
-        )
-    }
+    let isImported: Bool
 }

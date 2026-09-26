@@ -2,9 +2,10 @@ import SwiftUI
 import RealityKit
 
 struct DesignerView: View {
-    @EnvironmentObject var catalog: FurnitureCatalog
+    @EnvironmentObject var library: FurnitureLibrary
     @EnvironmentObject var scene: SceneController
     @EnvironmentObject var capture: CaptureSessionController
+    let onClose: () -> Void
 
     @State private var showNotes = false
     @State private var lastMagnification: CGFloat = 1
@@ -12,13 +13,59 @@ struct DesignerView: View {
     @State private var lastRotation: Angle = .zero
     @State private var noteText = ""
     @State private var noteRoom = "Living Room"
+    @State private var isDropTargeted = false
 
     var body: some View {
+        NavigationStack {
+            HStack(spacing: 0) {
+                room
+                AssetPoolView()
+                    .frame(width: 180)
+            }
+            .navigationTitle(scene.design?.name ?? "")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbarContent }
+        }
+        .sheet(isPresented: $showNotes) { NotesListView() }
+        .alert(scene.pendingNoteFromClient ? "Client tapped here. Add a note?" : "Add a note here?", isPresented: notePromptBinding) {
+            TextField("Note", text: $noteText)
+            TextField("Room", text: $noteRoom)
+            Button("Add") {
+                scene.commitNote(text: noteText, room: noteRoom)
+                noteText = ""
+            }
+            Button("Cancel", role: .cancel) { scene.pendingNotePoint = nil }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button("Designs", systemImage: "chevron.backward", action: onClose)
+                .tint(.primary)
+        }
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            if scene.hasSelection {
+                Button("Remove", systemImage: "trash", role: .destructive) { scene.removeSelected() }
+            }
+            Button("Add Note", systemImage: "note.text.badge.plus") { scene.toggleNoteMode() }
+                .symbolVariant(scene.mode == .note ? .fill : .none)
+                .tint(.primary)
+            Button("Notes", systemImage: "list.bullet.rectangle") { showNotes = true }
+                .tint(.primary)
+            Button("Recenter", systemImage: "scope") { scene.resetCamera() }
+                .tint(.primary)
+        }
+    }
+
+    private var room: some View {
         GeometryReader { geo in
             ZStack {
                 RealityView { content in
                     content.camera = .virtual
                     content.add(scene.designer.root)
+                } update: { _ in
+                    _ = scene.revision
                 }
                 .background(Brand.canvas)
                 .gesture(orbitGesture)
@@ -29,32 +76,23 @@ struct DesignerView: View {
                         scene.handleTap(at: value.location, viewSize: geo.size)
                     }
                 )
+                .dropDestination(for: String.self) { ids, location in
+                    guard let id = ids.first, let item = library.item(withID: id) else { return false }
+                    return scene.handleDrop(item, at: location, viewSize: geo.size)
+                } isTargeted: { isDropTargeted = $0 }
+
+                RoundedRectangle(cornerRadius: Brand.Radius.card)
+                    .strokeBorder(Brand.cta, lineWidth: 3)
+                    .padding(Brand.Spacing.xs)
+                    .opacity(isDropTargeted ? 1 : 0)
+                    .allowsHitTesting(false)
+                    .animation(Brand.Motion.standard, value: isDropTargeted)
 
                 VStack {
-                    HStack(spacing: Brand.Spacing.m) {
-                        Picker("Mode", selection: $scene.mode.animation(Brand.Motion.standard)) {
-                            ForEach(InteractionMode.allCases) { Text($0.rawValue).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        .fixedSize()
-                        Spacer()
-                        if scene.placedCount > 0 {
-                            Button("Undo", systemImage: "arrow.uturn.backward") { scene.removeLast() }
-                                .labelStyle(.iconOnly)
-                                .transition(.opacity)
-                        }
-                        Button("Notes", systemImage: "note.text") { showNotes = true }
-                            .labelStyle(.iconOnly)
-                    }
-                    .font(Brand.Typography.title)
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.circle)
-                    .padding(Brand.Spacing.m)
-                    .animation(Brand.Motion.standard, value: scene.placedCount)
-
                     if !scene.isLoaded {
                         ProgressView("Loading apartment…")
                             .font(Brand.Typography.caption)
+                            .padding(.top, Brand.Spacing.m)
                     }
                     if let error = scene.loadError {
                         Text(error)
@@ -62,35 +100,19 @@ struct DesignerView: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, Brand.Spacing.m)
                     }
-
                     Spacer()
-
                     if capture.isRunning {
                         HStack {
-                            Spacer()
                             CameraPreviewView(session: capture.session)
-                                .frame(width: 72, height: 96)
+                                .frame(width: 60, height: 80)
                                 .clipShape(.rect(cornerRadius: Brand.Radius.control))
                                 .accessibilityLabel("Camera preview")
-                                .transition(.opacity)
+                            Spacer()
                         }
-                        .padding(.horizontal, Brand.Spacing.m)
+                        .padding(Brand.Spacing.s)
                     }
-
-                    FurnitureListView()
                 }
             }
-        }
-        .task { await scene.setup() }
-        .sheet(isPresented: $showNotes) { NotesListView() }
-        .alert("Add a note here?", isPresented: notePromptBinding) {
-            TextField("Note", text: $noteText)
-            TextField("Room", text: $noteRoom)
-            Button("Add") {
-                scene.commitNote(text: noteText, room: noteRoom)
-                noteText = ""
-            }
-            Button("Cancel", role: .cancel) { scene.pendingNotePoint = nil }
         }
     }
 
@@ -127,6 +149,9 @@ struct DesignerView: View {
                 scene.rotateSelected(by: -Float((value.rotation - lastRotation).radians))
                 lastRotation = value.rotation
             }
-            .onEnded { _ in lastRotation = .zero }
+            .onEnded { _ in
+                lastRotation = .zero
+                scene.finishRotation()
+            }
     }
 }

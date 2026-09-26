@@ -67,7 +67,6 @@ nonisolated final class SessionBox: @unchecked Sendable {
 final class CaptureSessionController: ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var authorizationDenied = false
-    @Published var accessoryAvailable = false
 
     private let box = SessionBox()
     var session: AVCaptureSession { box.session }

@@ -23,15 +23,6 @@ enum RoomScene {
         return container
     }
 
-    static func makeFloor(size: SIMD2<Float>) -> Entity {
-        let floor = Entity()
-        floor.name = "FloorCollider"
-        floor.components.set(CollisionComponent(shapes: [.generateBox(width: size.x, height: 0.02, depth: size.y)]))
-        floor.components.set(InputTargetComponent())
-        floor.position.y = -0.01
-        return floor
-    }
-
     static func addLighting(to root: Entity) {
         let sun = DirectionalLight()
         sun.light.intensity = 12000

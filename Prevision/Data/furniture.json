@@ -1,24 +1,6 @@
 {
-  "items": [
-    {
-      "id": "sectional_sofa",
-      "name": "Sectional Sofa",
-      "usdz": "sectional_sofa",
-      "widthInches": 118,
-      "depthInches": 64,
-      "heightInches": 29,
-      "sourceUnit": "meters",
-      "zUp": true
-    },
-    {
-      "id": "floor_lamp",
-      "name": "Floor Lamp",
-      "usdz": "floor_lamp",
-      "widthInches": 18,
-      "depthInches": 18,
-      "heightInches": 63,
-      "sourceUnit": "meters",
-      "zUp": true
-    }
-  ]
+  "overrides": {
+    "sectional_sofa": { "widthInches": 118, "depthInches": 64, "heightInches": 29, "zUp": true },
+    "floor_lamp": { "widthInches": 18, "depthInches": 18, "heightInches": 63, "zUp": true }
+  }
 }

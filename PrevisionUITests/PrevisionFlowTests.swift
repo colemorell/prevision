@@ -1,35 +1,44 @@
 import XCTest
 
 final class PrevisionFlowTests: XCTestCase {
-    func testPlaceFurniture() throws {
+    func testCreateDesignAndDragFurniture() throws {
         let app = XCUIApplication()
         app.launch()
 
-        let loadingText = app.staticTexts["Loading apartment…"]
-        if loadingText.waitForExistence(timeout: 2) {
-            _ = loadingText.waitForNonExistence(timeout: 15)
-        } else {
-            Thread.sleep(forTimeInterval: 15)
-        }
+        let newDesign = app.buttons["New Design"]
+        XCTAssertTrue(newDesign.waitForExistence(timeout: 10))
+        attach(name: "01-home")
+        newDesign.tap()
 
-        attach(name: "01-loaded")
-
-        app.buttons["Sectional Sofa"].tap()
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72)).tap()
+        let sofa = app.buttons["Sectional Sofa"].firstMatch
+        XCTAssertTrue(sofa.waitForExistence(timeout: 20))
+        _ = app.staticTexts["Loading apartment…"].waitForNonExistence(timeout: 30)
         Thread.sleep(forTimeInterval: 2)
-        attach(name: "02-sofa")
+        attach(name: "02-showroom")
 
-        app.buttons["Floor Lamp"].tap()
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.7)).tap()
+        let start = sofa.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let target = start.withOffset(CGVector(dx: -300, dy: 40))
+        start.press(forDuration: 0.8, thenDragTo: target, withVelocity: .slow, thenHoldForDuration: 0.3)
         Thread.sleep(forTimeInterval: 2)
-        attach(name: "03-lamp")
+        attach(name: "03-dragged")
+
+        let lamp = app.buttons["Floor Lamp"].firstMatch
+        lamp.tap()
+        lamp.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: -200, dy: 0)).tap()
+        Thread.sleep(forTimeInterval: 2)
+        attach(name: "04-tapped")
+
+        app.buttons["Designs"].tap()
+        Thread.sleep(forTimeInterval: 1.5)
+        attach(name: "05-home-saved")
     }
 
     private func attach(name: String) {
-        let screenshot = XCUIScreen.main.screenshot()
-        let attachment = XCTAttachment(screenshot: screenshot)
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        for (index, screen) in XCUIScreen.screens.enumerated() {
+            let attachment = XCTAttachment(screenshot: screen.screenshot())
+            attachment.name = "\(name)-screen\(index)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
     }
 }
