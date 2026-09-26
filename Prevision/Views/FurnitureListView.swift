@@ -6,31 +6,26 @@ struct FurnitureListView: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
+            HStack(spacing: Brand.Spacing.s) {
                 ForEach(catalog.items) { item in
-                    VStack {
+                    let isArmed = scene.armedItem?.id == item.id
+                    Button {
+                        withAnimation(Brand.Motion.standard) { scene.arm(item) }
+                    } label: {
                         Text(item.name)
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
+                            .font(Brand.Typography.label)
+                            .padding(.horizontal, Brand.Spacing.m)
+                            .padding(.vertical, Brand.Spacing.s)
                     }
-                    .frame(width: 80, height: 80)
-                    .background(scene.armedItem?.id == item.id ? Color.blue.opacity(0.3) : Color.gray.opacity(0.2))
-                    .cornerRadius(8)
-                    .onTapGesture {
-                        scene.arm(item)
-                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .tint(isArmed ? Brand.cta : .secondary)
+                    .accessibilityAddTraits(isArmed ? .isSelected : [])
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, Brand.Spacing.m)
+            .padding(.vertical, Brand.Spacing.s)
         }
-        .frame(height: 100)
+        .background(.bar)
     }
-}
-
-#Preview {
-    FurnitureListView()
-        .environmentObject(FurnitureCatalog())
-        .environmentObject(SceneController())
 }

@@ -6,13 +6,9 @@ struct ClientView: View {
 
     var body: some View {
         RealityView { content in
-            content.add(scene.rootAnchor)
+            content.camera = .virtual
+            content.add(scene.client.root)
         }
-        .ignoresSafeArea()
+        .background(Brand.canvas)
     }
-}
-
-#Preview {
-    ClientView()
-        .environmentObject(SceneController())
 }

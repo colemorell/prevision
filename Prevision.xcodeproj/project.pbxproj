@@ -6,63 +6,23 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		0368D11FDE59C6823412386C /* PrevisionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09B37C84E0DC2CA594C3A41 /* PrevisionApp.swift */; };
-		29F788C5D6CD594F3C285608 /* NotesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AFEEEED25B45FCB14165FCC /* NotesListView.swift */; };
-		3174BBEF23A6DE5374E58174 /* RoomScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BF3990D756CD974568FDCA8 /* RoomScene.swift */; };
-		40BA4B56A7B0D0DA3ED5EC50 /* ExternalDisplayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6008940755AACD600B19AC /* ExternalDisplayManager.swift */; };
-		51751037AF11E1ABC7E4A05D /* FurnitureCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B8050E6942A3B9092FAB011 /* FurnitureCatalog.swift */; };
-		601702BFB3AC55DBDB88F50C /* ClientView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE20DC49ACA79DF706925618 /* ClientView.swift */; };
-		7F4BF69E66CE0F5A5948934F /* RaycastPlacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DBCCD3ECE63FFE59D1407DB /* RaycastPlacement.swift */; };
-		B0029381AC29C12C7C45A685 /* furniture.json in Resources */ = {isa = PBXBuildFile; fileRef = 046F3DD91289233635C019E3 /* furniture.json */; };
-		C6A919A8F448E2CCFA67A8E7 /* FurnitureItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = D445A76C2BC10B9863E5D053 /* FurnitureItem.swift */; };
-		D5301D31F395EFACFC15EBF1 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D42160AA36B88719DB4A53A /* Note.swift */; };
-		D91E8C2E943644E9C296873D /* DesignerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3897659E32871202F5DDE68B /* DesignerView.swift */; };
-		EA94EF23FE8728AC2151BF5A /* SceneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697E43DF34ECB875C411BCA6 /* SceneController.swift */; };
-		EFB475A5129E4F33BD54C26D /* FurnitureListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34D4F0E81608E134A8BAC5DE /* FurnitureListView.swift */; };
-		F5CA32D29602244C45BA986A /* NoteBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49061745A46984FFC347FEC9 /* NoteBubbleView.swift */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
-		046F3DD91289233635C019E3 /* furniture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = furniture.json; sourceTree = "<group>"; };
-		0DBCCD3ECE63FFE59D1407DB /* RaycastPlacement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaycastPlacement.swift; sourceTree = "<group>"; };
-		2AFEEEED25B45FCB14165FCC /* NotesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesListView.swift; sourceTree = "<group>"; };
-		34D4F0E81608E134A8BAC5DE /* FurnitureListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FurnitureListView.swift; sourceTree = "<group>"; };
-		3897659E32871202F5DDE68B /* DesignerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignerView.swift; sourceTree = "<group>"; };
-		3D42160AA36B88719DB4A53A /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
-		49061745A46984FFC347FEC9 /* NoteBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteBubbleView.swift; sourceTree = "<group>"; };
-		697E43DF34ECB875C411BCA6 /* SceneController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneController.swift; sourceTree = "<group>"; };
-		7B8050E6942A3B9092FAB011 /* FurnitureCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FurnitureCatalog.swift; sourceTree = "<group>"; };
-		8BF3990D756CD974568FDCA8 /* RoomScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomScene.swift; sourceTree = "<group>"; };
 		910BFEF5849D5926F2B2DECB /* Prevision.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Prevision.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D445A76C2BC10B9863E5D053 /* FurnitureItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FurnitureItem.swift; sourceTree = "<group>"; };
-		DE20DC49ACA79DF706925618 /* ClientView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientView.swift; sourceTree = "<group>"; };
-		F09B37C84E0DC2CA594C3A41 /* PrevisionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrevisionApp.swift; sourceTree = "<group>"; };
-		FD6008940755AACD600B19AC /* ExternalDisplayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplayManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		1FC9B371E7A5B60FE6188CB9 /* Prevision */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Prevision;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXGroup section */
-		05C08C78595B347350A3E608 /* Data */ = {
-			isa = PBXGroup;
-			children = (
-				046F3DD91289233635C019E3 /* furniture.json */,
-				7B8050E6942A3B9092FAB011 /* FurnitureCatalog.swift */,
-			);
-			path = Data;
-			sourceTree = "<group>";
-		};
-		17AF9D286D54516B740F6899 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				DE20DC49ACA79DF706925618 /* ClientView.swift */,
-				3897659E32871202F5DDE68B /* DesignerView.swift */,
-				34D4F0E81608E134A8BAC5DE /* FurnitureListView.swift */,
-				49061745A46984FFC347FEC9 /* NoteBubbleView.swift */,
-				2AFEEEED25B45FCB14165FCC /* NotesListView.swift */,
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
 		493D0C9006E747539606FA2A /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -74,65 +34,9 @@
 		4C0FD1BB7F6CFDD6DB35155B = {
 			isa = PBXGroup;
 			children = (
-				FC3D45158A11F79D3374ECCD /* Prevision */,
+				1FC9B371E7A5B60FE6188CB9 /* Prevision */,
 				493D0C9006E747539606FA2A /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		56FC3121D05292F2887C113D /* Scene */ = {
-			isa = PBXGroup;
-			children = (
-				0DBCCD3ECE63FFE59D1407DB /* RaycastPlacement.swift */,
-				8BF3990D756CD974568FDCA8 /* RoomScene.swift */,
-				697E43DF34ECB875C411BCA6 /* SceneController.swift */,
-			);
-			path = Scene;
-			sourceTree = "<group>";
-		};
-		7D082D3919F090525694A9B7 /* Display */ = {
-			isa = PBXGroup;
-			children = (
-				FD6008940755AACD600B19AC /* ExternalDisplayManager.swift */,
-			);
-			path = Display;
-			sourceTree = "<group>";
-		};
-		8470376E209781BE956E56D9 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Resources;
-			sourceTree = "<group>";
-		};
-		9440F3762BDF33F6135909A9 /* App */ = {
-			isa = PBXGroup;
-			children = (
-				F09B37C84E0DC2CA594C3A41 /* PrevisionApp.swift */,
-			);
-			path = App;
-			sourceTree = "<group>";
-		};
-		FC305530B79B25CE283D0F8B /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				D445A76C2BC10B9863E5D053 /* FurnitureItem.swift */,
-				3D42160AA36B88719DB4A53A /* Note.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		FC3D45158A11F79D3374ECCD /* Prevision */ = {
-			isa = PBXGroup;
-			children = (
-				9440F3762BDF33F6135909A9 /* App */,
-				05C08C78595B347350A3E608 /* Data */,
-				7D082D3919F090525694A9B7 /* Display */,
-				FC305530B79B25CE283D0F8B /* Models */,
-				8470376E209781BE956E56D9 /* Resources */,
-				56FC3121D05292F2887C113D /* Scene */,
-				17AF9D286D54516B740F6899 /* Views */,
-			);
-			path = Prevision;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -148,6 +52,9 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				1FC9B371E7A5B60FE6188CB9 /* Prevision */,
 			);
 			name = Prevision;
 			packageProductDependencies = (
@@ -166,6 +73,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					51870B29A06CFE3235869E9B = {
+						DevelopmentTeam = 857MZR9QLJ;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -194,7 +102,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B0029381AC29C12C7C45A685 /* furniture.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -205,19 +112,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				601702BFB3AC55DBDB88F50C /* ClientView.swift in Sources */,
-				D91E8C2E943644E9C296873D /* DesignerView.swift in Sources */,
-				40BA4B56A7B0D0DA3ED5EC50 /* ExternalDisplayManager.swift in Sources */,
-				51751037AF11E1ABC7E4A05D /* FurnitureCatalog.swift in Sources */,
-				C6A919A8F448E2CCFA67A8E7 /* FurnitureItem.swift in Sources */,
-				EFB475A5129E4F33BD54C26D /* FurnitureListView.swift in Sources */,
-				D5301D31F395EFACFC15EBF1 /* Note.swift in Sources */,
-				F5CA32D29602244C45BA986A /* NoteBubbleView.swift in Sources */,
-				29F788C5D6CD594F3C285608 /* NotesListView.swift in Sources */,
-				0368D11FDE59C6823412386C /* PrevisionApp.swift in Sources */,
-				7F4BF69E66CE0F5A5948934F /* RaycastPlacement.swift in Sources */,
-				3174BBEF23A6DE5374E58174 /* RoomScene.swift in Sources */,
-				EA94EF23FE8728AC2151BF5A /* SceneController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -228,8 +122,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 857MZR9QLJ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Prevision;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Prevision uses the camera session to show the live client view on the outer display.";
@@ -250,8 +146,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 857MZR9QLJ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Prevision;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Prevision uses the camera session to show the live client view on the outer display.";

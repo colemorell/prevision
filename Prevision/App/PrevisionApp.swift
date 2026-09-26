@@ -8,7 +8,7 @@ struct PrevisionApp: App {
 
     var body: some Scene {
         WindowGroup {
-            DesignerView()
+            InnerDisplayView()
                 .environmentObject(catalog)
                 .environmentObject(scene)
                 .environmentObject(externalDisplay)

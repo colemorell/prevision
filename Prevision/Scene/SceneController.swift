@@ -3,54 +3,161 @@ import SwiftUI
 import Combine
 import simd
 
-@MainActor
-final class SceneController: ObservableObject {
-    @Published var placedItems: [Entity] = []
-    @Published var notes: [Note] = []
-    @Published var armedItem: FurnitureItem? = nil
-    @Published var cameraDistance: Float = 4
-    @Published var cameraYaw: Float = 0
-    @Published var cameraPitch: Float = 0.3
+final class SceneRig {
+    let root = Entity()
+    let camera = PerspectiveCamera()
 
-    let rootAnchor = AnchorEntity()
+    init() {
+        camera.camera.fieldOfViewInDegrees = SceneController.fovDegrees
+        root.addChild(camera)
+    }
+}
+
+enum InteractionMode: String, CaseIterable, Identifiable {
+    case place = "Place"
+    case note = "Note"
+    var id: String { rawValue }
+}
+
+final class SceneController: ObservableObject {
+    static let fovDegrees: Float = 60
+
+    @Published var placedCount = 0
+    @Published var notes: [Note] = []
+    @Published var armedItem: FurnitureItem?
+    @Published var mode: InteractionMode = .place
+    @Published var isLoaded = false
+    @Published var loadError: String?
+    @Published var pendingNotePoint: SIMD3<Float>?
+
+    let designer = SceneRig()
+    let client = SceneRig()
+
+    private var target = SIMD3<Float>(0, 1, 0)
+    private var distance: Float = 12
+    private var yaw: Float = .pi / 4
+    private var pitch: Float = 0.9
+    private var minDistance: Float = 1.5
+    private var maxDistance: Float = 40
+
+    private var placed: [(designer: Entity, client: Entity)] = []
+    private var selectedIndex: Int?
+    private var didSetup = false
 
     func setup() async {
+        guard !didSetup else { return }
+        didSetup = true
         do {
             let apartment = try await RoomScene.loadApartment()
-            rootAnchor.addChild(apartment)
-            RoomScene.addLighting(to: rootAnchor)
+            let bounds = apartment.visualBounds(relativeTo: nil)
+            designer.root.addChild(apartment)
+            client.root.addChild(apartment.clone(recursive: true))
+
+            let floorSize = SIMD2<Float>(max(bounds.extents.x, 10) * 2, max(bounds.extents.z, 10) * 2)
+            designer.root.addChild(RoomScene.makeFloor(size: floorSize))
+            RoomScene.addLighting(to: designer.root)
+            RoomScene.addLighting(to: client.root)
+
+            target = SIMD3<Float>(0, min(bounds.extents.y * 0.3, 1.2), 0)
+            distance = min(max(bounds.extents.max() * 0.9, 6), 30)
+            maxDistance = max(distance * 2.5, 20)
+            isLoaded = true
         } catch {
+            loadError = error.localizedDescription
         }
+        updateCameras()
     }
 
     func arm(_ item: FurnitureItem) {
-        armedItem = item
+        armedItem = armedItem?.id == item.id ? nil : item
+        mode = .place
+    }
+
+    func handleTap(at location: CGPoint, viewSize: CGSize) {
+        guard let point = RaycastPlacement.floorPoint(tap: location, viewSize: viewSize, camera: designer.camera, fovDegrees: Self.fovDegrees) else { return }
+        switch mode {
+        case .place:
+            Task { await place(at: point) }
+        case .note:
+            pendingNotePoint = point
+        }
     }
 
     func place(at worldPoint: SIMD3<Float>) async {
         guard let item = armedItem else { return }
         do {
             let model = try await RaycastPlacement.loadModel(for: item)
-            var transform = model.transform
-            transform.translation = worldPoint
-            model.move(to: transform, relativeTo: model.parent, duration: 0, timingFunction: .linear)
-            rootAnchor.addChild(model)
-            placedItems.append(model)
+            model.position = worldPoint + SIMD3<Float>(0, 0.4, 0)
+            let mirror = model.clone(recursive: true)
+            designer.root.addChild(model)
+            client.root.addChild(mirror)
+            for entity in [model, mirror] {
+                var landed = entity.transform
+                landed.translation = worldPoint
+                entity.move(to: landed, relativeTo: entity.parent, duration: Brand.Motion.placementDuration, timingFunction: .easeInOut)
+            }
+            placed.append((model, mirror))
+            selectedIndex = placed.count - 1
+            placedCount = placed.count
         } catch {
+            loadError = "\(item.name): \(error.localizedDescription)"
         }
     }
 
-    func addNote(text: String, at position: SIMD3<Float>, room: String) {
-        let note = Note(text: text, position: position, room: room)
-        notes.append(note)
+    func rotateSelected(by radians: Float) {
+        guard let index = selectedIndex, placed.indices.contains(index) else { return }
+        let delta = simd_quatf(angle: radians, axis: [0, 1, 0])
+        placed[index].designer.orientation = delta * placed[index].designer.orientation
+        placed[index].client.orientation = placed[index].designer.orientation
     }
 
-    func handleZoom(_ scale: Float) {
-        cameraDistance *= scale
+    func removeLast() {
+        guard let last = placed.popLast() else { return }
+        last.designer.removeFromParent()
+        last.client.removeFromParent()
+        selectedIndex = placed.isEmpty ? nil : placed.count - 1
+        placedCount = placed.count
     }
 
-    func handleOrbit(deltaX: Float, deltaY: Float) {
-        cameraYaw += deltaX
-        cameraPitch += deltaY
+    func commitNote(text: String, room: String) {
+        guard let point = pendingNotePoint else { return }
+        pendingNotePoint = nil
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        notes.append(Note(text: trimmed, position: point, room: room))
+        let pin = Self.makePin()
+        pin.position = point
+        designer.root.addChild(pin)
+        let mirror = pin.clone(recursive: true)
+        client.root.addChild(mirror)
+    }
+
+    func zoom(by factor: Float) {
+        distance = min(max(distance / factor, minDistance), maxDistance)
+        updateCameras()
+    }
+
+    func orbit(deltaX: Float, deltaY: Float) {
+        yaw -= deltaX * 0.008
+        pitch = min(max(pitch + deltaY * 0.006, 0.1), 1.45)
+        updateCameras()
+    }
+
+    private func updateCameras() {
+        let offset = SIMD3<Float>(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw)) * distance
+        for rig in [designer, client] {
+            rig.camera.look(at: target, from: target + offset, relativeTo: nil)
+        }
+    }
+
+    private static func makePin() -> Entity {
+        let pin = Entity()
+        let stem = ModelEntity(mesh: .generateCylinder(height: 0.9, radius: 0.012), materials: [SimpleMaterial(color: .darkGray, isMetallic: false)])
+        stem.position.y = 0.45
+        let head = ModelEntity(mesh: .generateBox(width: 0.28, height: 0.22, depth: 0.02, cornerRadius: 0.02), materials: [SimpleMaterial(color: .systemYellow, isMetallic: false)])
+        head.position.y = 1.0
+        pin.addChild(stem)
+        pin.addChild(head)
+        return pin
     }
 }
