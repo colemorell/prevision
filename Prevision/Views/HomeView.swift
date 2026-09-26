@@ -114,7 +114,7 @@ struct HomeView: View {
                     .font(Brand.Typography.caption)
                     .foregroundStyle(.secondary)
 
-                Text("\(design.placements.count) pieces · \(design.notes.count) notes")
+                Text("^[\(design.placements.count) piece](inflect: true) · ^[\(design.notes.count) note](inflect: true)")
                     .font(Brand.Typography.caption)
                     .foregroundStyle(.secondary)
             }
