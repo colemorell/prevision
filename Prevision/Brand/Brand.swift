@@ -28,3 +28,11 @@ enum Brand {
         static let placementDuration: TimeInterval = 0.45
     }
 }
+
+extension View {
+    func overlayLabel() -> some View {
+        padding(.horizontal, Brand.Spacing.m)
+            .padding(.vertical, Brand.Spacing.s)
+            .glassEffect(.regular, in: .capsule)
+    }
+}

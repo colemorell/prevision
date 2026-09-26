@@ -12,6 +12,14 @@ struct Ray {
         return t > 0 ? origin + direction * t : nil
     }
 
+    var groundPoint: SIMD3<Float>? {
+        if let floorPoint { return floorPoint }
+        let flat = SIMD2(direction.x, direction.z)
+        guard simd_length(flat) > 1e-4 else { return nil }
+        let reach = simd_normalize(flat) * 100
+        return SIMD3(origin.x + reach.x, 0, origin.z + reach.y)
+    }
+
     func distance(to bounds: BoundingBox) -> Float? {
         var tMin: Float = 0
         var tMax = Float.greatestFiniteMagnitude

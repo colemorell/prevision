@@ -32,11 +32,6 @@ struct HomeView: View {
                     .padding(Brand.Spacing.m)
                 }
             }
-            .scrollBounceBehavior(.basedOnSize)
-            .safeAreaInset(edge: .bottom) {
-                newDesignButton
-                    .padding(Brand.Spacing.m)
-            }
             .background(Brand.canvas)
             .navigationTitle("Designs")
             .toolbarTitleDisplayMode(.inlineLarge)
@@ -44,6 +39,10 @@ struct HomeView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Settings", systemImage: "gearshape") { showSettings = true }
                         .tint(.primary)
+                }
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                ToolbarItem(placement: .primaryAction) {
+                    newDesignButton
                 }
             }
             .sheet(isPresented: $showSettings) { SettingsView() }
@@ -91,19 +90,15 @@ struct HomeView: View {
     }
 
     private var newDesignButton: some View {
-        Button {
+        Button("New Design", systemImage: "plus") {
             withAnimation(Brand.Motion.standard) {
                 let design = store.create(named: store.nextDefaultName())
                 onOpen(design)
             }
-        } label: {
-            Text("New Design")
-                .font(Brand.Typography.label)
-                .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glassProminent)
         .tint(Brand.cta)
-        .controlSize(.large)
+        .foregroundStyle(.white)
     }
 
     private func designCard(_ design: Design) -> some View {

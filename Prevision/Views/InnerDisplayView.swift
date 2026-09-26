@@ -10,27 +10,18 @@ struct InnerDisplayView: View {
     var body: some View {
         GeometryReader { proxy in
             let division = proxy.hingeDivision
-            Group {
-                if let division, division.height > division.width {
-                    HStack(spacing: 0) {
-                        ClientView(rig: scene.client, revision: scene.revision)
-                            .frame(width: division.minX)
-                        Color.clear.frame(width: division.width)
-                        DesignerView(onClose: onClose)
-                    }
-                    .ignoresSafeArea()
-                } else if let division {
-                    VStack(spacing: 0) {
-                        ClientView(rig: scene.client, revision: scene.revision)
-                            .frame(height: division.minY)
-                        Color.clear.frame(height: division.height)
-                        DesignerView(onClose: onClose)
-                    }
-                    .ignoresSafeArea()
-                } else {
-                    DesignerView(onClose: onClose)
+            let isVertical = division.map { $0.height > $0.width } ?? false
+            let layout = isVertical ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
+            layout {
+                if let division {
+                    ClientView(rig: scene.client, revision: scene.revision)
+                        .frame(width: isVertical ? division.minX : nil, height: isVertical ? nil : division.minY)
+                    Color.clear
+                        .frame(width: isVertical ? division.width : nil, height: isVertical ? nil : division.height)
                 }
+                DesignerView(onClose: onClose)
             }
+            .ignoresSafeArea(edges: division == nil ? [] : .all)
             .onAppear { hasHinge = division != nil }
             .onChange(of: division != nil) { _, present in hasHinge = present }
         }

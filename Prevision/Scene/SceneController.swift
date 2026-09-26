@@ -7,6 +7,7 @@ final class SceneRig {
     let root = Entity()
     let camera = PerspectiveCamera()
     var light: Entity?
+    var directionalLights: [(light: DirectionalLight, base: Float)] = []
 
     init() {
         camera.camera.fieldOfViewInDegrees = SceneController.horizontalFovDegrees
@@ -54,6 +55,7 @@ final class SceneController: ObservableObject {
     @Published private(set) var commits = 0
     @Published private(set) var revision = 0
     @Published private(set) var design: Design?
+    @Published private(set) var lightLevel: Float = 0.5
 
     var onDesignChange: ((Design) -> Void)?
 
@@ -77,6 +79,9 @@ final class SceneController: ObservableObject {
     private(set) var draggingItem: FurnitureItem?
     private var ghost: Entity?
     private var ghostItemID: String?
+    private var floorArea: (min: SIMD2<Float>, max: SIMD2<Float>)?
+    private var grabStart: CGPoint?
+    private var grabOffset = SIMD3<Float>.zero
     private let selectionRing = SceneController.makeSelectionRing()
 
     var isEditing: Bool { editingIndex != nil }
@@ -88,6 +93,7 @@ final class SceneController: ObservableObject {
         let copies: [Entity]
         var position: SIMD3<Float>
         var yaw: Float
+        var scale: Float
     }
 
     func preload(library: FurnitureLibrary) {
@@ -107,12 +113,13 @@ final class SceneController: ObservableObject {
         self.design = design
         for placement in design.placements {
             guard let item = library.item(withID: placement.itemID) else { continue }
-            await spawn(item, id: placement.id, at: placement.position, yaw: placement.yaw, animated: false)
+            await spawn(item, id: placement.id, at: placement.position, yaw: placement.yaw, scale: placement.scale, animated: false)
         }
         for note in design.notes {
             addNoteEntity(note)
         }
         notes = design.notes
+        setLightLevel(design.lightLevel ?? 0.5, persisting: false)
         resetCamera()
     }
 
@@ -176,7 +183,8 @@ final class SceneController: ObservableObject {
     }
 
     func updateGhost(at location: CGPoint, viewSize: CGSize) {
-        guard let item = draggingItem, let point = ray(for: designer, at: location, viewSize: viewSize)?.floorPoint else { return }
+        guard let item = draggingItem, let floor = floorPoint(for: designer, at: location, viewSize: viewSize) else { return }
+        let point = clamped(floor, itemID: item.id, yaw: 0)
         if ghostItemID != item.id {
             hideGhost()
             guard let prototype = prototypes[item.id] else {
@@ -201,7 +209,7 @@ final class SceneController: ObservableObject {
     }
 
     func handleDrop(_ item: FurnitureItem, at location: CGPoint, viewSize: CGSize) {
-        let point = ray(for: designer, at: location, viewSize: viewSize)?.floorPoint
+        let point = ghost?.position ?? floorPoint(for: designer, at: location, viewSize: viewSize)
         endDrag()
         guard let point else { return }
         Task { await placeForEditing(item, at: point) }
@@ -209,7 +217,8 @@ final class SceneController: ObservableObject {
 
     func handleClientTap(at location: CGPoint, viewSize: CGSize) {
         guard design != nil, pendingNotePoint == nil,
-              let point = ray(for: outer, at: location, viewSize: viewSize)?.floorPoint else { return }
+              let floor = floorPoint(for: outer, at: location, viewSize: viewSize) else { return }
+        let point = clamped(floor)
         pendingNoteFromClient = true
         pendingNotePoint = point
     }
@@ -228,32 +237,87 @@ final class SceneController: ObservableObject {
         persist()
     }
 
-    func moveEditing(to point: SIMD3<Float>) {
+    func moveEditing(to target: SIMD3<Float>) {
         guard let index = editingIndex, placed.indices.contains(index) else { return }
+        let point = clamped(target, itemID: placed[index].itemID, yaw: placed[index].yaw, scale: placed[index].scale)
         placed[index].position = point
-        placed[index].copies.forEach { $0.position = point }
-        revision &+= 1
+        applyTransform(index)
     }
 
-    func moveEditing(toScreen location: CGPoint, viewSize: CGSize) {
-        guard let point = ray(for: designer, at: location, viewSize: viewSize)?.floorPoint else { return }
-        moveEditing(to: point)
+    func dragEditing(from start: CGPoint, to location: CGPoint, viewSize: CGSize) {
+        guard let index = editingIndex, placed.indices.contains(index) else { return }
+        if grabStart != start {
+            guard let origin = floorPoint(for: designer, at: start, viewSize: viewSize) else { return }
+            grabStart = start
+            grabOffset = placed[index].position - origin
+        }
+        guard let point = floorPoint(for: designer, at: location, viewSize: viewSize) else { return }
+        moveEditing(to: point + grabOffset)
+    }
+
+    func endDragEditing() {
+        grabStart = nil
     }
 
     func rotateEditing(by radians: Float, animated: Bool = false) {
         guard let index = editingIndex, placed.indices.contains(index) else { return }
         placed[index].yaw += radians
+        placed[index].position = clamped(placed[index].position, itemID: placed[index].itemID, yaw: placed[index].yaw, scale: placed[index].scale)
         let orientation = simd_quatf(angle: placed[index].yaw, axis: [0, 1, 0])
         for entity in placed[index].copies {
+            var turned = entity.transform
+            turned.rotation = orientation
+            turned.translation = placed[index].position
             if animated {
-                var turned = entity.transform
-                turned.rotation = orientation
                 entity.move(to: turned, relativeTo: entity.parent, duration: 0.25, timingFunction: .easeInOut)
             } else {
-                entity.orientation = orientation
+                entity.transform = turned
             }
         }
         animated ? refresh(for: 0.25) : (revision &+= 1)
+    }
+
+    func scaleEditing(by factor: Float) {
+        guard let index = editingIndex, placed.indices.contains(index) else { return }
+        placed[index].scale = min(max(placed[index].scale * factor, 0.3), 3)
+        placed[index].position = clamped(placed[index].position, itemID: placed[index].itemID, yaw: placed[index].yaw, scale: placed[index].scale)
+        applyTransform(index)
+        updateSelectionRing()
+    }
+
+    func setLightLevel(_ level: Float, persisting: Bool = true) {
+        lightLevel = min(max(level, 0), 1)
+        let multiplier = pow(2, (lightLevel - 0.5) * 4)
+        for rig in rigs {
+            for entry in rig.directionalLights {
+                entry.light.light.intensity = entry.base * multiplier
+            }
+            if var component = rig.light?.components[ImageBasedLightComponent.self] {
+                component.intensityExponent = 1 + (lightLevel - 0.5) * 4
+                rig.light?.components.set(component)
+            }
+        }
+        revision &+= 1
+        if persisting { persist() }
+    }
+
+    func saveLighting() {
+        guard let design, (design.lightLevel ?? 0.5) != lightLevel else { return }
+        persist()
+    }
+
+    private func applyTransform(_ index: Int) {
+        let item = placed[index]
+        let transform = Transform(
+            scale: SIMD3(repeating: item.scale),
+            rotation: simd_quatf(angle: item.yaw, axis: [0, 1, 0]),
+            translation: item.position
+        )
+        for entity in item.copies {
+            entity.stopAllAnimations()
+            entity.transform = transform
+        }
+        revision &+= 1
     }
 
     func commitEditing() {
@@ -303,9 +367,12 @@ final class SceneController: ObservableObject {
         do {
             let apartment = try await RoomScene.loadApartment()
             let bounds = apartment.visualBounds(relativeTo: nil)
+            let floor = apartment.findEntity(named: RoomScene.floorName)?.visualBounds(relativeTo: nil) ?? bounds
+            let inset: Float = 0.1
+            floorArea = (SIMD2(floor.min.x + inset, floor.min.z + inset), SIMD2(floor.max.x - inset, floor.max.z - inset))
             add(apartment)
             for rig in rigs {
-                RoomScene.addLighting(to: rig.root)
+                rig.directionalLights = RoomScene.addLighting(to: rig.root).map { ($0, $0.light.intensity) }
                 rig.light = await Lighting.apply(to: rig.root)
             }
             let halfWidth = max(bounds.extents.x, bounds.extents.z) / 2
@@ -325,10 +392,11 @@ final class SceneController: ObservableObject {
         return model
     }
 
-    private func spawn(_ item: FurnitureItem, id: UUID, at point: SIMD3<Float>, yaw: Float, animated: Bool) async {
+    private func spawn(_ item: FurnitureItem, id: UUID, at point: SIMD3<Float>, yaw: Float, scale: Float = 1, animated: Bool) async {
         do {
             let model = try await prototype(for: item).clone(recursive: true)
             model.orientation = simd_quatf(angle: yaw, axis: [0, 1, 0])
+            model.scale = SIMD3(repeating: scale)
             model.position = animated ? point + SIMD3<Float>(0, 0.4, 0) : point
             let copies = add(model)
             if animated {
@@ -338,7 +406,7 @@ final class SceneController: ObservableObject {
                     entity.move(to: landed, relativeTo: entity.parent, duration: Brand.Motion.placementDuration, timingFunction: .easeInOut)
                 }
             }
-            placed.append(PlacedItem(id: id, itemID: item.id, copies: copies, position: point, yaw: yaw))
+            placed.append(PlacedItem(id: id, itemID: item.id, copies: copies, position: point, yaw: yaw, scale: scale))
             if animated {
                 refresh(for: Brand.Motion.placementDuration)
             } else {
@@ -349,8 +417,10 @@ final class SceneController: ObservableObject {
         }
     }
 
-    private func placeForEditing(_ item: FurnitureItem, at point: SIMD3<Float>) async {
+    private func placeForEditing(_ item: FurnitureItem, at target: SIMD3<Float>) async {
         if isEditing { commitEditing() }
+        _ = try? await prototype(for: item)
+        let point = clamped(target, itemID: item.id, yaw: 0)
         let before = placed.count
         await spawn(item, id: UUID(), at: point, yaw: 0, animated: true)
         if placed.count > before {
@@ -404,8 +474,9 @@ final class SceneController: ObservableObject {
 
     private func persist() {
         guard var design else { return }
-        design.placements = placed.map { Placement(id: $0.id, itemID: $0.itemID, position: $0.position, yaw: $0.yaw) }
+        design.placements = placed.map { Placement(id: $0.id, itemID: $0.itemID, position: $0.position, yaw: $0.yaw, scale: $0.scale) }
         design.notes = notes
+        design.lightLevel = lightLevel
         self.design = design
         onDesignChange?(design)
     }
@@ -420,6 +491,35 @@ final class SceneController: ObservableObject {
             }
         }
         return copies
+    }
+
+    private func floorPoint(for rig: SceneRig, at location: CGPoint, viewSize: CGSize) -> SIMD3<Float>? {
+        ray(for: rig, at: location, viewSize: viewSize)?.groundPoint
+    }
+
+    private func clamped(_ point: SIMD3<Float>, itemID: String? = nil, yaw: Float = 0, scale: Float = 1) -> SIMD3<Float> {
+        guard let area = floorArea else { return point }
+        var low = SIMD2<Float>.zero
+        var high = SIMD2<Float>.zero
+        if let itemID, let prototype = prototypes[itemID] {
+            var bounds = prototype.visualBounds(relativeTo: nil)
+            bounds = BoundingBox(min: bounds.min * scale, max: bounds.max * scale)
+            let c = cos(yaw), s = sin(yaw)
+            let corners = [
+                SIMD2(bounds.min.x, bounds.min.z), SIMD2(bounds.max.x, bounds.min.z),
+                SIMD2(bounds.min.x, bounds.max.z), SIMD2(bounds.max.x, bounds.max.z)
+            ].map { SIMD2($0.x * c + $0.y * s, -$0.x * s + $0.y * c) }
+            low = corners.reduce(corners[0]) { simd_min($0, $1) }
+            high = corners.reduce(corners[0]) { simd_max($0, $1) }
+        }
+        func fit(_ value: Float, _ lower: Float, _ upper: Float) -> Float {
+            lower <= upper ? min(max(value, lower), upper) : (lower + upper) / 2
+        }
+        return SIMD3(
+            fit(point.x, area.min.x - low.x, area.max.x - high.x),
+            point.y,
+            fit(point.z, area.min.y - low.y, area.max.y - high.y)
+        )
     }
 
     private func ray(for rig: SceneRig, at location: CGPoint, viewSize: CGSize) -> Ray? {
@@ -440,10 +540,11 @@ final class SceneController: ObservableObject {
             return
         }
         let item = placed[index].copies[0]
-        let extents = item.visualBounds(relativeTo: item).extents
-        let radius = max(extents.x, extents.z) / 2 + 0.15
+        selectionRing.removeFromParent()
+        let bounds = item.visualBounds(relativeTo: item)
+        let radius = max(bounds.extents.x, bounds.extents.z) / 2 + 0.1
         selectionRing.scale = SIMD3<Float>(radius, 1, radius)
-        selectionRing.position = [0, 0.01, 0]
+        selectionRing.position = [bounds.center.x, 0.01, bounds.center.z]
         item.addChild(selectionRing)
         revision &+= 1
     }
@@ -466,8 +567,8 @@ final class SceneController: ObservableObject {
 
     private static func makeSelectionRing() -> Entity {
         let accent = UIColor(named: "AccentColor") ?? .tintColor
-        var material = UnlitMaterial(color: accent.withAlphaComponent(0.45))
-        material.blending = .transparent(opacity: 0.45)
+        var material = UnlitMaterial(color: accent.withAlphaComponent(0.3))
+        material.blending = .transparent(opacity: 0.3)
         return ModelEntity(mesh: .generateCylinder(height: 0.01, radius: 1), materials: [material])
     }
 }

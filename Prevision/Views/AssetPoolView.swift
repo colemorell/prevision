@@ -5,6 +5,9 @@ struct AssetPoolView: View {
     @EnvironmentObject var library: FurnitureLibrary
     @EnvironmentObject var scene: SceneController
     var axis: Axis = .vertical
+    var dragSpace: NamedCoordinateSpace = .named("designer")
+    var onDragChanged: (FurnitureItem, CGPoint) -> Void = { _, _ in }
+    var onDragEnded: (FurnitureItem, CGPoint?) -> Void = { _, _ in }
     @State private var showImporter = false
     @State private var importError: String?
 
@@ -32,13 +35,7 @@ struct AssetPoolView: View {
                         AssetTile(item: item, thumbnail: library.thumbnails[item.id], isArmed: scene.armedItem?.id == item.id)
                             .frame(width: axis == .vertical ? nil : 96)
                             .onTapGesture { scene.arm(item) }
-                            .onDrag {
-                                scene.beginDrag(item)
-                                return NSItemProvider(object: item.id as NSString)
-                            } preview: {
-                                AssetTile(item: item, thumbnail: library.thumbnails[item.id], isArmed: true)
-                                    .frame(width: 120)
-                            }
+                            .gesture(dragGesture(for: item))
                     }
                 }
                 .padding(.horizontal, Brand.Spacing.s)
@@ -60,6 +57,23 @@ struct AssetPoolView: View {
             Text(importError ?? "")
         }
         .task { await library.loadThumbnails() }
+    }
+
+    private func dragGesture(for item: FurnitureItem) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.15)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: dragSpace))
+            .onChanged { value in
+                if case .second(true, let drag?) = value {
+                    onDragChanged(item, drag.location)
+                }
+            }
+            .onEnded { value in
+                if case .second(true, let drag?) = value {
+                    onDragEnded(item, drag.location)
+                } else {
+                    onDragEnded(item, nil)
+                }
+            }
     }
 }
 

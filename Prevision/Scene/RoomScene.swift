@@ -26,7 +26,8 @@ enum RoomScene {
         return container
     }
 
-    static func addLighting(to root: Entity) {
+    @discardableResult
+    static func addLighting(to root: Entity) -> [DirectionalLight] {
         let sun = DirectionalLight()
         sun.light.intensity = 6000
         sun.shadow = DirectionalLightComponent.Shadow(maximumDistance: 30, depthBias: 2)
@@ -37,5 +38,6 @@ enum RoomScene {
         fill.light.intensity = 2500
         fill.look(at: .zero, from: [-6, 8, -4], relativeTo: nil)
         root.addChild(fill)
+        return [sun, fill]
     }
 }

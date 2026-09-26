@@ -14,30 +14,20 @@ struct DesignerView: View {
     @State private var noteText = ""
     @State private var noteRoom = "Living Room"
     @State private var isDropTargeted = false
+    @State private var showLight = false
+    @State private var roomFrame: CGRect = .zero
+    @State private var poolDrag: PoolDrag?
 
     var body: some View {
         NavigationStack {
-            GeometryReader { geo in
-                if geo.size.width > 560 {
-                    HStack(spacing: 0) {
-                        room
-                        AssetPoolView(axis: .vertical)
-                            .frame(width: 180)
-                    }
-                } else {
-                    VStack(spacing: 0) {
-                        room
-                        AssetPoolView(axis: .horizontal)
-                            .frame(height: 170)
-                    }
-                }
-            }
-            .navigationTitle(scene.design?.name ?? "")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { toolbarContent }
+            workspace
+                .coordinateSpace(.named(Self.dragSpace))
+                .navigationTitle(scene.design?.name ?? "")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { toolbarContent }
         }
         .sheet(isPresented: $showNotes) { NotesListView() }
-        .alert(scene.pendingNoteFromClient ? "Client tapped here. Add a note?" : "Add a note here?", isPresented: notePromptBinding) {
+        .alert(notePromptTitle, isPresented: notePromptBinding) {
             TextField("Note", text: $noteText)
             TextField("Room", text: $noteRoom)
             Button("Add") {
@@ -46,8 +36,29 @@ struct DesignerView: View {
             }
             Button("Cancel", role: .cancel) { scene.pendingNotePoint = nil }
         }
-        .sensoryFeedback(.selection, trigger: scene.menuIndex) { _, new in new != nil }
-        .sensoryFeedback(.success, trigger: scene.commits)
+        .modifier(DesignerFeedback(scene: scene, dragID: poolDrag?.item.id))
+        .task(id: scene.lightLevel) {
+            try? await Task.sleep(for: .milliseconds(500))
+            if !Task.isCancelled { scene.saveLighting() }
+        }
+    }
+
+    private var notePromptTitle: String {
+        scene.pendingNoteFromClient ? "Client tapped here. Add a note?" : "Add a note here?"
+    }
+
+    private var workspace: some View {
+        GeometryReader { geo in
+            let isWide = geo.size.width > 560
+            let layout = isWide ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
+            layout {
+                room
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.dragSpace)) } action: { roomFrame = $0 }
+                AssetPoolView(axis: isWide ? .vertical : .horizontal, dragSpace: .named(Self.dragSpace), onDragChanged: poolDragChanged, onDragEnded: poolDragEnded)
+                    .frame(width: isWide ? 180 : nil, height: isWide ? nil : 170)
+            }
+            .overlay(alignment: .topLeading) { dragCard }
+        }
     }
 
     @ToolbarContentBuilder
@@ -57,13 +68,17 @@ struct DesignerView: View {
                 .tint(.primary)
         }
         ToolbarItemGroup(placement: .topBarTrailing) {
-            Button("Add Note", systemImage: "note.text.badge.plus") { scene.toggleNoteMode() }
-                .symbolVariant(scene.mode == .note ? .fill : .none)
-                .tint(.primary)
-            Button("Notes", systemImage: "list.bullet.rectangle") { showNotes = true }
-                .tint(.primary)
-            Button("Recenter", systemImage: "scope") { scene.resetCamera() }
-                .tint(.primary)
+            Button("Light", systemImage: "sun.max") {
+                withAnimation(Brand.Motion.standard) { showLight.toggle() }
+            }
+            .symbolVariant(showLight ? .fill : .none)
+            .tint(.primary)
+            Menu("More", systemImage: "ellipsis") {
+                Button(scene.mode == .note ? "Cancel Note" : "Add Note", systemImage: "note.text.badge.plus") { scene.toggleNoteMode() }
+                Button("Notes", systemImage: "list.bullet.rectangle") { showNotes = true }
+                Button("Recenter", systemImage: "scope") { scene.resetCamera() }
+            }
+            .tint(.primary)
         }
     }
 
@@ -73,8 +88,9 @@ struct DesignerView: View {
                 RealityView { content in
                     content.camera = .virtual
                     content.add(scene.designer.root)
-                } update: { _ in
+                } update: { content in
                     _ = scene.revision
+                    if scene.designer.root.scene == nil { content.add(scene.designer.root) }
                 }
                 .background(Brand.canvas)
                 .gesture(dragGesture(in: geo.size))
@@ -86,27 +102,7 @@ struct DesignerView: View {
                         scene.handleTap(at: value.location, viewSize: geo.size)
                     }
                 )
-                .dropDestination(for: String.self) { ids, session in
-                    isDropTargeted = false
-                    guard let id = ids.first, let item = library.item(withID: id) else {
-                        scene.endDrag()
-                        return
-                    }
-                    scene.handleDrop(item, at: session.location, viewSize: geo.size)
-                }
-                .onDropSessionUpdated { session in
-                    switch session.phase {
-                    case .entering, .active:
-                        isDropTargeted = true
-                        scene.updateGhost(at: session.location, viewSize: geo.size)
-                    case .exiting:
-                        isDropTargeted = false
-                        scene.hideGhost()
-                    default:
-                        isDropTargeted = false
-                    }
-                }
-                .accessibilityLabel("Apartment")
+                .accessibilityLabel("Room")
                 .accessibilityHint("Drag to orbit, pinch to zoom. Long press a piece to edit or delete it.")
 
                 RoundedRectangle(cornerRadius: Brand.Radius.card)
@@ -116,6 +112,13 @@ struct DesignerView: View {
                     .allowsHitTesting(false)
                     .animation(Brand.Motion.standard, value: isDropTargeted)
 
+                if showLight {
+                    LightSlider(value: lightBinding)
+                        .padding(.leading, Brand.Spacing.m)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+
                 if let anchor = scene.menuAnchor(viewSize: geo.size) {
                     pieceMenu
                         .position(x: anchor.x, y: max(anchor.y - 36, 32))
@@ -124,14 +127,15 @@ struct DesignerView: View {
 
                 VStack {
                     if !scene.isLoaded {
-                        ProgressView("Loading apartment…")
+                        ProgressView("Loading room…")
                             .font(Brand.Typography.caption)
+                            .overlayLabel()
                             .padding(.top, Brand.Spacing.m)
                     }
                     if let error = scene.loadError {
                         Text(error)
                             .font(Brand.Typography.caption)
-                            .foregroundStyle(.secondary)
+                            .overlayLabel()
                             .padding(.horizontal, Brand.Spacing.m)
                     }
                     Spacer()
@@ -156,7 +160,7 @@ struct DesignerView: View {
     private var pieceMenu: some View {
         GlassEffectContainer(spacing: Brand.Spacing.s) {
             HStack(spacing: Brand.Spacing.s) {
-                Button("Edit", systemImage: "pencil") { scene.editMenuItem() }
+                Button("Edit", systemImage: "square.and.pencil") { scene.editMenuItem() }
                     .tint(.primary)
                 Button("Delete", systemImage: "trash", role: .destructive) { scene.deleteMenuItem() }
             }
@@ -169,9 +173,9 @@ struct DesignerView: View {
 
     private var editBar: some View {
         VStack(spacing: Brand.Spacing.s) {
-            Text("Drag to move · Twist to rotate")
+            Text("Drag to move · Twist to rotate · Pinch to resize")
                 .font(Brand.Typography.caption)
-                .foregroundStyle(.secondary)
+                .overlayLabel()
             GlassEffectContainer(spacing: Brand.Spacing.s) {
                 HStack(spacing: Brand.Spacing.s) {
                     Button("Rotate Left", systemImage: "rotate.left") { scene.rotateEditing(by: .pi / 12, animated: true) }
@@ -195,6 +199,67 @@ struct DesignerView: View {
         .padding(Brand.Spacing.m)
     }
 
+    static let dragSpace = "designer"
+
+    @ViewBuilder
+    private var dragCard: some View {
+        if let poolDrag, !roomFrame.contains(poolDrag.location) {
+            Group {
+                if let thumbnail = library.thumbnails[poolDrag.item.id] {
+                    Image(uiImage: thumbnail)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(Brand.Spacing.s)
+                } else {
+                    Image(systemName: "cube")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 88, height: 88)
+            .glassEffect(.regular, in: .rect(cornerRadius: Brand.Radius.control))
+            .position(poolDrag.location)
+            .allowsHitTesting(false)
+            .transition(.scale(scale: 0.8).combined(with: .opacity))
+        }
+    }
+
+    private func poolDragChanged(_ item: FurnitureItem, _ location: CGPoint) {
+        if poolDrag == nil {
+            scene.beginDrag(item)
+        }
+        poolDrag = PoolDrag(item: item, location: location)
+        let inside = roomFrame.contains(location)
+        if isDropTargeted != inside { isDropTargeted = inside }
+        if inside {
+            scene.updateGhost(at: roomPoint(location), viewSize: roomFrame.size)
+        } else {
+            scene.hideGhost()
+        }
+    }
+
+    private func poolDragEnded(_ item: FurnitureItem, _ location: CGPoint?) {
+        guard poolDrag != nil else { return }
+        poolDrag = nil
+        isDropTargeted = false
+        if let location, roomFrame.contains(location) {
+            scene.handleDrop(item, at: roomPoint(location), viewSize: roomFrame.size)
+        } else {
+            scene.endDrag()
+        }
+    }
+
+    private func roomPoint(_ location: CGPoint) -> CGPoint {
+        CGPoint(x: location.x - roomFrame.minX, y: location.y - roomFrame.minY)
+    }
+
+    private var lightBinding: Binding<Double> {
+        Binding(
+            get: { Double(scene.lightLevel) },
+            set: { scene.setLightLevel(Float($0), persisting: false) }
+        )
+    }
+
     private var notePromptBinding: Binding<Bool> {
         Binding(
             get: { scene.pendingNotePoint != nil },
@@ -206,7 +271,7 @@ struct DesignerView: View {
         DragGesture(minimumDistance: 8)
             .onChanged { value in
                 if scene.isEditing {
-                    scene.moveEditing(toScreen: value.location, viewSize: size)
+                    scene.dragEditing(from: value.startLocation, to: value.location, viewSize: size)
                 } else {
                     let dx = value.translation.width - lastDrag.width
                     let dy = value.translation.height - lastDrag.height
@@ -214,7 +279,10 @@ struct DesignerView: View {
                     lastDrag = value.translation
                 }
             }
-            .onEnded { _ in lastDrag = .zero }
+            .onEnded { _ in
+                lastDrag = .zero
+                scene.endDragEditing()
+            }
     }
 
     private func longPressGesture(in size: CGSize) -> some Gesture {
@@ -230,7 +298,12 @@ struct DesignerView: View {
     private var zoomGesture: some Gesture {
         MagnifyGesture()
             .onChanged { value in
-                scene.zoom(by: Float(value.magnification / lastMagnification))
+                let factor = Float(value.magnification / lastMagnification)
+                if scene.isEditing {
+                    scene.scaleEditing(by: factor)
+                } else {
+                    scene.zoom(by: factor)
+                }
                 lastMagnification = value.magnification
             }
             .onEnded { _ in lastMagnification = 1 }
@@ -244,4 +317,22 @@ struct DesignerView: View {
             }
             .onEnded { _ in lastRotation = .zero }
     }
+}
+
+private struct DesignerFeedback: ViewModifier {
+    @ObservedObject var scene: SceneController
+    let dragID: String?
+
+    func body(content: Content) -> some View {
+        content
+            .sensoryFeedback(.selection, trigger: scene.menuIndex) { (_: Int?, new: Int?) in new != nil }
+            .sensoryFeedback(.success, trigger: scene.commits)
+            .sensoryFeedback(.impact(weight: .medium), trigger: dragID) { (old: String?, new: String?) in old == nil && new != nil }
+            .sensoryFeedback(.impact(weight: .light), trigger: scene.editingIndex) { (old: Int?, new: Int?) in old == nil && new != nil }
+    }
+}
+
+private struct PoolDrag: Equatable {
+    let item: FurnitureItem
+    var location: CGPoint
 }

@@ -46,3 +46,19 @@ Spacing/radius/motion tokens are defined in `Brand.swift`. Animations use ease-i
 ## Furniture Catalog
 
 Furniture catalog is in `Prevision/Data/furniture.json`. Dimensions are in inches. The `zUp` flag indicates Z-up models (e.g., `sectional_sofa.usdz` requires a −90° X rotation).
+
+## Features
+
+**Furniture Placement:** Long-press a furniture tile and drag it to place—a glass card follows your finger. Over the room, it becomes a translucent 3D ghost on the floor. Release to drop it in. Alternatively, tap a tile, then tap the floor to place it.
+
+**Edit Mode:** Press and hold a placed piece to enter edit mode. Drag to move (respects room walls), twist or use the Rotate buttons to rotate, pinch to resize (0.3x to 3x). Tap Set to confirm changes.
+
+**Toolbar:** Back to Designs; Light (sun) opens a vertical glass slider controlling scene brightness (saved per design); More (ellipsis) provides Add Note, Notes, and Recenter.
+
+**Client Notes:** The client taps the client or outer screen to prompt the designer to add a note there.
+
+**Device Support:** Runs on regular iPhones with a single-screen layout and on iPhone Duo with client view on the top half, designer controls on the bottom half, and outer screen via CameraCaptureAccessory on iOS 27.1. Deployment target is iOS 27.0.
+
+## Usage
+
+Open a saved design and long-press furniture tiles to add them to the room. Use gestures to position and orient pieces—drag to move, rotate to turn, pinch to resize. Tap Set to confirm. The designer adjusts scene brightness with the Light control and adds notes for the client. On iPhone Duo, the client watches the outer screen while the designer controls the inner screen.

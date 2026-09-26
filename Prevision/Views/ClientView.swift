@@ -11,8 +11,9 @@ struct ClientView: View {
             RealityView { content in
                 content.camera = .virtual
                 content.add(rig.root)
-            } update: { _ in
+            } update: { content in
                 _ = revision
+                if rig.root.scene == nil { content.add(rig.root) }
             }
             .background(Brand.canvas)
             .gesture(
