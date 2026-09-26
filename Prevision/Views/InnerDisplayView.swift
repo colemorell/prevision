@@ -8,29 +8,27 @@ struct InnerDisplayView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let division = proxy.reservedRegions(kind: .division).first { $0.isActive }
-            if let division, division.frame.height > division.frame.width {
+            let division = proxy.hingeDivision
+            if let division, division.height > division.width {
                 HStack(spacing: 0) {
                     ClientView(rig: scene.client, revision: scene.revision)
-                        .frame(width: division.frame.minX)
-                    Color.clear.frame(width: division.frame.width)
+                        .frame(width: division.minX)
+                    Color.clear.frame(width: division.width)
                     DesignerView(onClose: onClose)
                 }
             } else {
                 VStack(spacing: 0) {
                     ClientView(rig: scene.client, revision: scene.revision)
-                        .frame(height: division?.frame.minY ?? proxy.size.height / 2)
+                        .frame(height: division?.minY ?? proxy.size.height / 2)
                     if let division {
-                        Color.clear.frame(height: division.frame.height)
+                        Color.clear.frame(height: division.height)
                     }
                     DesignerView(onClose: onClose)
                 }
             }
         }
         .ignoresSafeArea()
-        .sceneAccessory {
-            OuterAccessory.make(scene: scene, isEnabled: $outerDisplayEnabled)
-        }
+        .modifier(OuterDisplayModifier(scene: scene, isEnabled: $outerDisplayEnabled))
         .task { await capture.start() }
         .onDisappear { capture.stop() }
     }

@@ -12,7 +12,9 @@ final class SceneRig {
         camera.camera.fieldOfViewInDegrees = SceneController.horizontalFovDegrees
         camera.camera.fieldOfViewOrientation = .horizontal
         root.addChild(camera)
-        root.addChild(Self.makeHeartbeat())
+        if !ProcessInfo.processInfo.arguments.contains("-UITests") {
+            root.addChild(Self.makeHeartbeat())
+        }
     }
 
     private static func makeHeartbeat() -> Entity {

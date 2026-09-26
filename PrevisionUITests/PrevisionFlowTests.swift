@@ -3,6 +3,7 @@ import XCTest
 final class PrevisionFlowTests: XCTestCase {
     func testCreateDesignAndDragFurniture() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["-UITests"]
         app.launch()
 
         let newDesign = app.buttons["New Design"]
@@ -17,16 +18,16 @@ final class PrevisionFlowTests: XCTestCase {
         attach(name: "02-showroom")
 
         let start = sofa.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        let target = start.withOffset(CGVector(dx: -300, dy: 40))
+        let target = start.withOffset(CGVector(dx: -260, dy: -80))
         start.press(forDuration: 0.8, thenDragTo: target, withVelocity: .slow, thenHoldForDuration: 0.3)
         Thread.sleep(forTimeInterval: 2)
         attach(name: "03-dragged")
 
         let lamp = app.buttons["Floor Lamp"].firstMatch
-        lamp.tap()
-        lamp.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: -200, dy: 0)).tap()
+        let lampStart = lamp.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        lampStart.press(forDuration: 0.8, thenDragTo: lampStart.withOffset(CGVector(dx: -380, dy: -60)), withVelocity: .slow, thenHoldForDuration: 0.3)
         Thread.sleep(forTimeInterval: 2)
-        attach(name: "04-tapped")
+        attach(name: "04-lamp")
 
         app.buttons["Designs"].tap()
         Thread.sleep(forTimeInterval: 1.5)
