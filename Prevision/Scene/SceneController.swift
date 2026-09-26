@@ -12,6 +12,7 @@ final class SceneRig {
     var subscription: EventSubscription?
 
     private var heartbeat: (entity: Entity, animation: AnimationResource)?
+    private var heartbeatController: AnimationPlaybackController?
 
     func attach(to holder: Entity) {
         owner = holder
@@ -20,8 +21,11 @@ final class SceneRig {
     }
 
     func keepAttached(to holder: Entity) {
-        if owner === holder, root.parent !== holder {
+        guard owner === holder else { return }
+        if root.parent !== holder {
             holder.addChild(root)
+            startHeartbeat()
+        } else if heartbeat != nil, heartbeatController?.isValid != true || heartbeatController?.isPlaying != true {
             startHeartbeat()
         }
     }
@@ -29,7 +33,7 @@ final class SceneRig {
     private func startHeartbeat() {
         guard let heartbeat else { return }
         heartbeat.entity.stopAllAnimations()
-        heartbeat.entity.playAnimation(heartbeat.animation)
+        heartbeatController = heartbeat.entity.playAnimation(heartbeat.animation)
     }
 
     init() {
