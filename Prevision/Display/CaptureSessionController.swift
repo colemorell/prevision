@@ -70,6 +70,7 @@ final class CaptureSessionController: ObservableObject {
     @Published var accessoryAvailable = false
 
     private let box = SessionBox()
+    var session: AVCaptureSession { box.session }
     private var notificationTasks: [Task<Void, Never>] = []
 
     func start() async {

@@ -4,6 +4,7 @@ import RealityKit
 struct DesignerView: View {
     @EnvironmentObject var catalog: FurnitureCatalog
     @EnvironmentObject var scene: SceneController
+    @EnvironmentObject var capture: CaptureSessionController
 
     @State private var showNotes = false
     @State private var lastMagnification: CGFloat = 1
@@ -63,6 +64,18 @@ struct DesignerView: View {
                     }
 
                     Spacer()
+
+                    if capture.isRunning {
+                        HStack {
+                            Spacer()
+                            CameraPreviewView(session: capture.session)
+                                .frame(width: 72, height: 96)
+                                .clipShape(.rect(cornerRadius: Brand.Radius.control))
+                                .accessibilityLabel("Camera preview")
+                                .transition(.opacity)
+                        }
+                        .padding(.horizontal, Brand.Spacing.m)
+                    }
 
                     FurnitureListView()
                 }
