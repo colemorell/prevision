@@ -39,7 +39,7 @@ struct HomeView: View {
             }
             .background(Brand.canvas)
             .navigationTitle("Designs")
-            .navigationBarTitleDisplayMode(.large)
+            .toolbarTitleDisplayMode(.inlineLarge)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Settings", systemImage: "gearshape") { showSettings = true }

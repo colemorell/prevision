@@ -3,35 +3,38 @@ import Foundation
 import simd
 
 enum RoomScene {
-    static let hiddenForDollhouse = ["Plane_002_White1_0", "Plane_002_Black_001_0"]
+    static let environmentName = "Simple_Modern_Living_Room"
+    static let floorName = "Modern_Living_Room_Floor_0"
+    static let hiddenForDollhouse = ["Modern_Living_Room_Ceiling_0"]
 
     static func loadApartment() async throws -> Entity {
-        let apartment = try await Entity(named: "Modern_Apartment", in: Bundle.main)
+        let room = try await Entity(named: environmentName, in: Bundle.main)
         for name in hiddenForDollhouse {
-            apartment.findEntity(named: name)?.isEnabled = false
+            room.findEntity(named: name)?.isEnabled = false
         }
         let container = Entity()
-        container.name = "Apartment"
-        container.addChild(apartment)
+        container.name = "Environment"
+        container.addChild(room)
 
         var bounds = container.visualBounds(relativeTo: container)
         if bounds.extents.max() > 100 {
-            apartment.scale = SIMD3<Float>(repeating: 0.01)
+            room.scale = SIMD3<Float>(repeating: 0.01)
             bounds = container.visualBounds(relativeTo: container)
         }
-        apartment.position -= SIMD3<Float>(bounds.center.x, bounds.min.y, bounds.center.z)
+        let floorY = room.findEntity(named: floorName)?.visualBounds(relativeTo: container).max.y ?? bounds.min.y
+        room.position -= SIMD3<Float>(bounds.center.x, floorY, bounds.center.z)
         return container
     }
 
     static func addLighting(to root: Entity) {
         let sun = DirectionalLight()
-        sun.light.intensity = 12000
+        sun.light.intensity = 6000
         sun.shadow = DirectionalLightComponent.Shadow(maximumDistance: 30, depthBias: 2)
         sun.look(at: .zero, from: [4, 10, 6], relativeTo: nil)
         root.addChild(sun)
 
         let fill = DirectionalLight()
-        fill.light.intensity = 5000
+        fill.light.intensity = 2500
         fill.look(at: .zero, from: [-6, 8, -4], relativeTo: nil)
         root.addChild(fill)
     }

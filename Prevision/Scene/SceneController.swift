@@ -49,7 +49,9 @@ final class SceneController: ObservableObject {
     @Published var loadError: String?
     @Published var pendingNotePoint: SIMD3<Float>?
     @Published var pendingNoteFromClient = false
-    @Published private(set) var hasSelection = false
+    @Published private(set) var editingIndex: Int?
+    @Published private(set) var menuIndex: Int?
+    @Published private(set) var commits = 0
     @Published private(set) var revision = 0
     @Published private(set) var design: Design?
 
@@ -72,13 +74,12 @@ final class SceneController: ObservableObject {
     private var placed: [PlacedItem] = []
     private var noteEntities: [[Entity]] = []
     private var prototypes: [String: Entity] = [:]
-    private var selectedIndex: Int? {
-        didSet {
-            updateSelectionRing()
-            hasSelection = selectedIndex != nil
-        }
-    }
+    private(set) var draggingItem: FurnitureItem?
+    private var ghost: Entity?
+    private var ghostItemID: String?
     private let selectionRing = SceneController.makeSelectionRing()
+
+    var isEditing: Bool { editingIndex != nil }
     private var setupTask: Task<Void, Never>?
 
     private struct PlacedItem {
@@ -112,7 +113,6 @@ final class SceneController: ObservableObject {
             addNoteEntity(note)
         }
         notes = design.notes
-        selectedIndex = nil
         resetCamera()
     }
 
@@ -138,6 +138,14 @@ final class SceneController: ObservableObject {
 
     func handleTap(at location: CGPoint, viewSize: CGSize) {
         guard let ray = ray(for: designer, at: location, viewSize: viewSize) else { return }
+        if menuIndex != nil {
+            setMenu(nil)
+            return
+        }
+        if isEditing {
+            if let point = ray.floorPoint { moveEditing(to: point) }
+            return
+        }
         switch mode {
         case .note:
             pendingNoteFromClient = false
@@ -146,18 +154,57 @@ final class SceneController: ObservableObject {
         case .select:
             if let item = armedItem, let point = ray.floorPoint {
                 armedItem = nil
-                Task { await spawn(item, id: UUID(), at: point, yaw: 0, animated: true) }
-            } else {
-                selectedIndex = hitIndex(for: ray)
+                Task { await placeForEditing(item, at: point) }
             }
         }
     }
 
-    func handleDrop(_ item: FurnitureItem, at location: CGPoint, viewSize: CGSize) -> Bool {
-        guard let point = ray(for: designer, at: location, viewSize: viewSize)?.floorPoint else { return false }
+    func handleLongPress(at location: CGPoint, viewSize: CGSize) {
+        guard !isEditing, let ray = ray(for: designer, at: location, viewSize: viewSize) else { return }
+        setMenu(hitIndex(for: ray))
+    }
+
+    func beginDrag(_ item: FurnitureItem) {
+        draggingItem = item
         armedItem = nil
-        Task { await spawn(item, id: UUID(), at: point, yaw: 0, animated: true) }
-        return true
+        if menuIndex != nil { setMenu(nil) }
+    }
+
+    func endDrag() {
+        draggingItem = nil
+        hideGhost()
+    }
+
+    func updateGhost(at location: CGPoint, viewSize: CGSize) {
+        guard let item = draggingItem, let point = ray(for: designer, at: location, viewSize: viewSize)?.floorPoint else { return }
+        if ghostItemID != item.id {
+            hideGhost()
+            guard let prototype = prototypes[item.id] else {
+                Task { _ = try? await self.prototype(for: item) }
+                return
+            }
+            let preview = prototype.clone(recursive: true)
+            preview.components.set(OpacityComponent(opacity: 0.4))
+            designer.root.addChild(preview)
+            ghost = preview
+            ghostItemID = item.id
+        }
+        ghost?.position = point
+        revision &+= 1
+    }
+
+    func hideGhost() {
+        ghost?.removeFromParent()
+        ghost = nil
+        ghostItemID = nil
+        revision &+= 1
+    }
+
+    func handleDrop(_ item: FurnitureItem, at location: CGPoint, viewSize: CGSize) {
+        let point = ray(for: designer, at: location, viewSize: viewSize)?.floorPoint
+        endDrag()
+        guard let point else { return }
+        Task { await placeForEditing(item, at: point) }
     }
 
     func handleClientTap(at location: CGPoint, viewSize: CGSize) {
@@ -167,24 +214,59 @@ final class SceneController: ObservableObject {
         pendingNotePoint = point
     }
 
-    func rotateSelected(by radians: Float) {
-        guard let index = selectedIndex, placed.indices.contains(index) else { return }
+    func editMenuItem() {
+        guard let index = menuIndex else { return }
+        setMenu(nil)
+        setEditing(index)
+    }
+
+    func deleteMenuItem() {
+        guard let index = menuIndex, placed.indices.contains(index) else { return }
+        setMenu(nil)
+        placed.remove(at: index).copies.forEach { $0.removeFromParent() }
+        revision &+= 1
+        persist()
+    }
+
+    func moveEditing(to point: SIMD3<Float>) {
+        guard let index = editingIndex, placed.indices.contains(index) else { return }
+        placed[index].position = point
+        placed[index].copies.forEach { $0.position = point }
+        revision &+= 1
+    }
+
+    func moveEditing(toScreen location: CGPoint, viewSize: CGSize) {
+        guard let point = ray(for: designer, at: location, viewSize: viewSize)?.floorPoint else { return }
+        moveEditing(to: point)
+    }
+
+    func rotateEditing(by radians: Float, animated: Bool = false) {
+        guard let index = editingIndex, placed.indices.contains(index) else { return }
         placed[index].yaw += radians
         let orientation = simd_quatf(angle: placed[index].yaw, axis: [0, 1, 0])
-        placed[index].copies.forEach { $0.orientation = orientation }
-        revision &+= 1
+        for entity in placed[index].copies {
+            if animated {
+                var turned = entity.transform
+                turned.rotation = orientation
+                entity.move(to: turned, relativeTo: entity.parent, duration: 0.25, timingFunction: .easeInOut)
+            } else {
+                entity.orientation = orientation
+            }
+        }
+        animated ? refresh(for: 0.25) : (revision &+= 1)
     }
 
-    func finishRotation() {
+    func commitEditing() {
+        guard isEditing else { return }
+        setEditing(nil)
+        commits &+= 1
         persist()
     }
 
-    func removeSelected() {
-        guard let index = selectedIndex, placed.indices.contains(index) else { return }
-        placed.remove(at: index).copies.forEach { $0.removeFromParent() }
-        selectedIndex = nil
-        revision &+= 1
-        persist()
+    func menuAnchor(viewSize: CGSize) -> CGPoint? {
+        guard let index = menuIndex, placed.indices.contains(index) else { return nil }
+        let bounds = placed[index].copies[0].visualBounds(relativeTo: nil)
+        return project(SIMD3<Float>(bounds.center.x, bounds.max.y, bounds.center.z), viewSize: viewSize)
     }
 
     func commitNote(text: String, room: String) {
@@ -258,15 +340,44 @@ final class SceneController: ObservableObject {
             }
             placed.append(PlacedItem(id: id, itemID: item.id, copies: copies, position: point, yaw: yaw))
             if animated {
-                selectedIndex = placed.count - 1
                 refresh(for: Brand.Motion.placementDuration)
-                persist()
             } else {
                 revision &+= 1
             }
         } catch {
             loadError = "\(item.name): \(error.localizedDescription)"
         }
+    }
+
+    private func placeForEditing(_ item: FurnitureItem, at point: SIMD3<Float>) async {
+        if isEditing { commitEditing() }
+        let before = placed.count
+        await spawn(item, id: UUID(), at: point, yaw: 0, animated: true)
+        if placed.count > before {
+            setEditing(placed.count - 1)
+        }
+    }
+
+    private func setEditing(_ index: Int?) {
+        withAnimation(Brand.Motion.standard) { editingIndex = index }
+        updateSelectionRing()
+    }
+
+    private func setMenu(_ index: Int?) {
+        withAnimation(Brand.Motion.standard) { menuIndex = index }
+        updateSelectionRing()
+    }
+
+    private func project(_ point: SIMD3<Float>, viewSize: CGSize) -> CGPoint? {
+        guard viewSize.width > 0, viewSize.height > 0 else { return nil }
+        let view = designer.camera.transformMatrix(relativeTo: nil).inverse
+        let local = view * SIMD4<Float>(point, 1)
+        guard local.z < 0 else { return nil }
+        let tanHalf = tan(Self.horizontalFovDegrees * .pi / 360)
+        let aspect = Float(viewSize.width / viewSize.height)
+        let ndcX = (local.x / -local.z) / tanHalf
+        let ndcY = (local.y / -local.z) / (tanHalf / aspect)
+        return CGPoint(x: CGFloat((ndcX + 1) / 2) * viewSize.width, y: CGFloat((1 - ndcY) / 2) * viewSize.height)
     }
 
     private func addNoteEntity(_ note: Note) {
@@ -281,7 +392,10 @@ final class SceneController: ObservableObject {
         placed = []
         noteEntities = []
         notes = []
-        selectedIndex = nil
+        editingIndex = nil
+        menuIndex = nil
+        updateSelectionRing()
+        endDrag()
         armedItem = nil
         pendingNotePoint = nil
         mode = .select
@@ -320,7 +434,7 @@ final class SceneController: ObservableObject {
     }
 
     private func updateSelectionRing() {
-        guard let index = selectedIndex, placed.indices.contains(index) else {
+        guard let index = editingIndex ?? menuIndex, placed.indices.contains(index) else {
             selectionRing.removeFromParent()
             revision &+= 1
             return

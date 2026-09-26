@@ -46,6 +46,8 @@ struct DesignerView: View {
             }
             Button("Cancel", role: .cancel) { scene.pendingNotePoint = nil }
         }
+        .sensoryFeedback(.selection, trigger: scene.menuIndex) { _, new in new != nil }
+        .sensoryFeedback(.success, trigger: scene.commits)
     }
 
     @ToolbarContentBuilder
@@ -55,9 +57,6 @@ struct DesignerView: View {
                 .tint(.primary)
         }
         ToolbarItemGroup(placement: .topBarTrailing) {
-            if scene.hasSelection {
-                Button("Remove", systemImage: "trash", role: .destructive) { scene.removeSelected() }
-            }
             Button("Add Note", systemImage: "note.text.badge.plus") { scene.toggleNoteMode() }
                 .symbolVariant(scene.mode == .note ? .fill : .none)
                 .tint(.primary)
@@ -78,18 +77,37 @@ struct DesignerView: View {
                     _ = scene.revision
                 }
                 .background(Brand.canvas)
-                .gesture(orbitGesture)
+                .gesture(dragGesture(in: geo.size))
                 .simultaneousGesture(zoomGesture)
                 .simultaneousGesture(rotateGesture)
+                .simultaneousGesture(longPressGesture(in: geo.size))
                 .simultaneousGesture(
                     SpatialTapGesture().onEnded { value in
                         scene.handleTap(at: value.location, viewSize: geo.size)
                     }
                 )
-                .dropDestination(for: String.self) { ids, location in
-                    guard let id = ids.first, let item = library.item(withID: id) else { return false }
-                    return scene.handleDrop(item, at: location, viewSize: geo.size)
-                } isTargeted: { isDropTargeted = $0 }
+                .dropDestination(for: String.self) { ids, session in
+                    isDropTargeted = false
+                    guard let id = ids.first, let item = library.item(withID: id) else {
+                        scene.endDrag()
+                        return
+                    }
+                    scene.handleDrop(item, at: session.location, viewSize: geo.size)
+                }
+                .onDropSessionUpdated { session in
+                    switch session.phase {
+                    case .entering, .active:
+                        isDropTargeted = true
+                        scene.updateGhost(at: session.location, viewSize: geo.size)
+                    case .exiting:
+                        isDropTargeted = false
+                        scene.hideGhost()
+                    default:
+                        isDropTargeted = false
+                    }
+                }
+                .accessibilityLabel("Apartment")
+                .accessibilityHint("Drag to orbit, pinch to zoom. Long press a piece to edit or delete it.")
 
                 RoundedRectangle(cornerRadius: Brand.Radius.card)
                     .strokeBorder(Brand.cta, lineWidth: 3)
@@ -97,6 +115,12 @@ struct DesignerView: View {
                     .opacity(isDropTargeted ? 1 : 0)
                     .allowsHitTesting(false)
                     .animation(Brand.Motion.standard, value: isDropTargeted)
+
+                if let anchor = scene.menuAnchor(viewSize: geo.size) {
+                    pieceMenu
+                        .position(x: anchor.x, y: max(anchor.y - 36, 32))
+                        .transition(.scale(scale: 0.8).combined(with: .opacity))
+                }
 
                 VStack {
                     if !scene.isLoaded {
@@ -111,6 +135,10 @@ struct DesignerView: View {
                             .padding(.horizontal, Brand.Spacing.m)
                     }
                     Spacer()
+                    if scene.isEditing {
+                        editBar
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                     if capture.isRunning {
                         CameraPreviewView(session: capture.session)
                             .frame(width: 1, height: 1)
@@ -120,7 +148,51 @@ struct DesignerView: View {
                     }
                 }
             }
+            .animation(Brand.Motion.standard, value: scene.isEditing)
+            .animation(Brand.Motion.standard, value: scene.menuIndex)
         }
+    }
+
+    private var pieceMenu: some View {
+        GlassEffectContainer(spacing: Brand.Spacing.s) {
+            HStack(spacing: Brand.Spacing.s) {
+                Button("Edit", systemImage: "pencil") { scene.editMenuItem() }
+                    .tint(.primary)
+                Button("Delete", systemImage: "trash", role: .destructive) { scene.deleteMenuItem() }
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
+        }
+    }
+
+    private var editBar: some View {
+        VStack(spacing: Brand.Spacing.s) {
+            Text("Drag to move · Twist to rotate")
+                .font(Brand.Typography.caption)
+                .foregroundStyle(.secondary)
+            GlassEffectContainer(spacing: Brand.Spacing.s) {
+                HStack(spacing: Brand.Spacing.s) {
+                    Button("Rotate Left", systemImage: "rotate.left") { scene.rotateEditing(by: .pi / 12, animated: true) }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.glass)
+                        .buttonBorderShape(.circle)
+                        .tint(.primary)
+                    Button("Rotate Right", systemImage: "rotate.right") { scene.rotateEditing(by: -.pi / 12, animated: true) }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.glass)
+                        .buttonBorderShape(.circle)
+                        .tint(.primary)
+                    Button("Set") { scene.commitEditing() }
+                        .font(Brand.Typography.label)
+                        .buttonStyle(.glassProminent)
+                        .tint(Brand.cta)
+                }
+                .controlSize(.large)
+            }
+        }
+        .padding(Brand.Spacing.m)
     }
 
     private var notePromptBinding: Binding<Bool> {
@@ -130,15 +202,29 @@ struct DesignerView: View {
         )
     }
 
-    private var orbitGesture: some Gesture {
+    private func dragGesture(in size: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 8)
             .onChanged { value in
-                let dx = value.translation.width - lastDrag.width
-                let dy = value.translation.height - lastDrag.height
-                scene.orbit(deltaX: Float(dx), deltaY: Float(dy))
-                lastDrag = value.translation
+                if scene.isEditing {
+                    scene.moveEditing(toScreen: value.location, viewSize: size)
+                } else {
+                    let dx = value.translation.width - lastDrag.width
+                    let dy = value.translation.height - lastDrag.height
+                    scene.orbit(deltaX: Float(dx), deltaY: Float(dy))
+                    lastDrag = value.translation
+                }
             }
             .onEnded { _ in lastDrag = .zero }
+    }
+
+    private func longPressGesture(in size: CGSize) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.45)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .onEnded { value in
+                if case .second(true, let drag?) = value {
+                    scene.handleLongPress(at: drag.startLocation, viewSize: size)
+                }
+            }
     }
 
     private var zoomGesture: some Gesture {
@@ -153,12 +239,9 @@ struct DesignerView: View {
     private var rotateGesture: some Gesture {
         RotateGesture()
             .onChanged { value in
-                scene.rotateSelected(by: -Float((value.rotation - lastRotation).radians))
+                scene.rotateEditing(by: -Float((value.rotation - lastRotation).radians))
                 lastRotation = value.rotation
             }
-            .onEnded { _ in
-                lastRotation = .zero
-                scene.finishRotation()
-            }
+            .onEnded { _ in lastRotation = .zero }
     }
 }

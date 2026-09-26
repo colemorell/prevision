@@ -16,6 +16,8 @@ struct AssetPoolView: View {
                 Spacer()
                 Button("Import Models", systemImage: "square.and.arrow.down") { showImporter = true }
                     .labelStyle(.iconOnly)
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.circle)
                     .tint(.primary)
             }
             .padding(.horizontal, Brand.Spacing.m)
@@ -30,9 +32,12 @@ struct AssetPoolView: View {
                         AssetTile(item: item, thumbnail: library.thumbnails[item.id], isArmed: scene.armedItem?.id == item.id)
                             .frame(width: axis == .vertical ? nil : 96)
                             .onTapGesture { scene.arm(item) }
-                            .draggable(item.id) {
+                            .onDrag {
+                                scene.beginDrag(item)
+                                return NSItemProvider(object: item.id as NSString)
+                            } preview: {
                                 AssetTile(item: item, thumbnail: library.thumbnails[item.id], isArmed: true)
-                                    .frame(width: 140)
+                                    .frame(width: 120)
                             }
                     }
                 }

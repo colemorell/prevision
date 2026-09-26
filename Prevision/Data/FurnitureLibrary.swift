@@ -30,7 +30,7 @@ private nonisolated final class ThumbnailResumeGuard: @unchecked Sendable {
 }
 
 final class FurnitureLibrary: ObservableObject {
-    static let environmentModels: Set<String> = ["Modern_Apartment"]
+    static let environmentModels: Set<String> = ["Modern_Apartment", "Simple_Modern_Living_Room"]
 
     @Published private(set) var items: [FurnitureItem] = []
     @Published private(set) var thumbnails: [String: UIImage] = [:]
@@ -78,7 +78,7 @@ final class FurnitureLibrary: ObservableObject {
         await withTaskGroup(of: (String, UIImage?).self) { group in
             for item in pending {
                 let timestamp = Self.modificationTimestamp(for: item.url)
-                let cacheURL = cacheDir.appendingPathComponent("\(item.id)-\(timestamp).png")
+                let cacheURL = cacheDir.appendingPathComponent("\(item.id)-\(timestamp)-v2.png")
                 group.addTask { [weak self] in
                     guard let self else { return (item.id, nil) }
                     let image = await self.generateThumbnail(for: item, cacheURL: cacheURL)
@@ -118,7 +118,7 @@ final class FurnitureLibrary: ObservableObject {
         if let image = await Self.quickLookThumbnail(forFileAt: item.url) {
             return image
         }
-        return await ThumbnailRenderer.render(modelAt: item.url, zUp: item.zUp)
+        return await ThumbnailRenderer.render(item: item)
     }
 
     private nonisolated static func quickLookThumbnail(forFileAt url: URL) async -> UIImage? {

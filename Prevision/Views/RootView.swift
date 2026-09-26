@@ -10,10 +10,12 @@ struct RootView: View {
         ZStack {
             if openDesignID != nil {
                 InnerDisplayView(onClose: close)
-                    .transition(.opacity)
+                    .background(Brand.canvas)
+                    .transition(.move(edge: .trailing))
+                    .zIndex(1)
             } else {
                 HomeView(onOpen: open)
-                    .transition(.opacity)
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .offset(x: -80)), removal: .opacity.combined(with: .offset(x: -80))))
             }
         }
         .animation(Brand.Motion.standard, value: openDesignID)
