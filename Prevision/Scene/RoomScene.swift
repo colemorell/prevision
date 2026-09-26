@@ -7,7 +7,7 @@ enum RoomScene {
     static let floorName = "Modern_Living_Room_Floor_0"
     static let hiddenForDollhouse = ["Modern_Living_Room_Ceiling_0"]
 
-    static func loadApartment() async throws -> Entity {
+    static func loadRoom() async throws -> Entity {
         let room = try await Entity(named: environmentName, in: Bundle.main)
         for name in hiddenForDollhouse {
             room.findEntity(named: name)?.isEnabled = false
@@ -27,10 +27,12 @@ enum RoomScene {
     }
 
     @discardableResult
-    static func addLighting(to root: Entity) -> [DirectionalLight] {
+    static func addLighting(to root: Entity, castsShadows: Bool) -> [DirectionalLight] {
         let sun = DirectionalLight()
         sun.light.intensity = 6000
-        sun.shadow = DirectionalLightComponent.Shadow(maximumDistance: 30, depthBias: 2)
+        if castsShadows {
+            sun.shadow = DirectionalLightComponent.Shadow(maximumDistance: 30, depthBias: 2)
+        }
         sun.look(at: .zero, from: [4, 10, 6], relativeTo: nil)
         root.addChild(sun)
 

@@ -6,42 +6,50 @@ Live 3D showroom for interior designers. iPhone Duo (foldable): designer control
 
 ```
 Prevision/
-  App/PrevisionApp.swift          entry, scene phase, external display hook
-  Models/
-    FurnitureItem.swift           id, name, usdz filename, real dims (inches), z-up flag
-    Note.swift                    id, text, world position, room tag
+  App/PrevisionApp.swift          entry, shared stores and scene controller
+  Brand/Brand.swift               type, spacing, radius, motion tokens; overlayLabel
+  Models/                         Design (placements, notes, light level), FurnitureItem, Note
   Data/
-    furniture.json                catalog: dims + model filenames
-    FurnitureCatalog.swift        loads + decodes furniture.json
+    DesignStore.swift             saved designs (JSON in Application Support)
+    FurnitureLibrary.swift        bundled + imported USDZ, thumbnails
+    furniture.json                size and orientation overrides
   Scene/
-    RoomScene.swift               RealityKit scene: load apartment, lighting, camera
-    SceneController.swift         ObservableObject: gestures, place, orbit/zoom, notes
-    RaycastPlacement.swift        tap floor -> world point -> drop scaled model
-  Views/
-    DesignerView.swift            inner bottom: RealityView + control overlay
-    ClientView.swift              inner top / mirror of client outer view
-    FurnitureListView.swift       tap item to arm placement
-    NotesListView.swift           notes grouped by room (stretch)
-    NoteBubbleView.swift          "Add a note here?" bubble (stretch)
+    SceneController.swift         placement, editing, camera, lighting, persistence
+    SceneRig.swift                per-view root + camera, attach and redraw heartbeat
+    RoomScene.swift               loads the living room, hides ceiling, lights
+    RaycastPlacement.swift        screen ray, floor hit, model loading
+    Lighting.swift                image-based lighting
+    StickyNote.swift              3D note pins
+    ThumbnailRenderer.swift       offscreen thumbnails
   Display/
-    ExternalDisplayManager.swift  CameraCaptureAccessory / outer screen mirroring
-  Resources/Models/               *.usdz (bundled)
+    CaptureSessionController.swift  AVCaptureSession for the outer screen
+    CameraPreviewView.swift       hidden preview layer
+    GeometryProxy+Hinge.swift     hinge division from reserved regions
+  Views/
+    RootView, HomeView, SettingsView
+    InnerDisplayView              Duo split: client top, designer bottom
+    DesignerView, AssetPoolView, LightSlider, RoomLoadingView, TwoFingerPan
+    ClientView, OuterDisplayView  mirrors; outer via CameraCaptureAccessory
+    NotesListView
+  Resources/                      models, IBL, assets, app icon
 ```
+## Completed
 
-## Order of work (4h)
+1. **Assets**: living room and furniture models bundled; deployment target iOS 27.0.
+2. **Xcode project**: XcodeGen project.yml with team configured.
+3. **Core scene**: `RoomScene` loads living room, orbits, zooms, double-tap zoom toward spot (double-tap again to zoom out).
+4. **Placement**: long-press furniture tiles to drag into room with glass card feedback and translucent ghost preview; releasing drops into edit mode with drag/rotate/resize/Set workflow; long-press placed piece for Edit or Delete.
+5. **Dual screen**: `DesignerView` on inner bottom, `ClientView` on inner top and outer screen via `CameraCaptureAccessory` (iOS 27.1), outer screen rotated 90° for laptop posture (configurable in Settings).
+6. **Toolbar**: Back, Light (vertical glass slider, saved per design), More menu (Add Note, Notes, Recenter).
+7. **Gestures**: one-finger drag orbits, two-finger drag pans, pinch zooms, double-tap zooms toward a spot.
+8. **UI Test**: `PrevisionUITests/PrevisionFlowTests.swift`.
 
-1. **Assets first** (blocks everything). Trim `Modern_Apartment.usdz` (~102MB → target <30MB): remove Door_001, Plants, KDecor, CouchSet, Shoes, MacBook, OficeDecors, BedDecors. Drop trimmed apartment + 3 furniture USDZ into `Resources/Models/`.
-2. **Xcode project**: create iOS App target "Prevision", SwiftUI lifecycle, min iOS 18. Add all Swift files + Resources folder (folder reference).
-3. **Core scene**: `RoomScene` loads apartment, converts cm→m, Y-up. Basic orbit/zoom gestures in `SceneController`.
-4. **Placement**: `FurnitureListView` arms an item → `RaycastPlacement` on floor tap → drop model auto-scaled from `furniture.json` inches. Handle `sectional_sofa` Z-up: rotate -90° X.
-5. **Dual screen**: `DesignerView` (controls) + `ClientView` (clean view). `ExternalDisplayManager` mirrors client view to outer screen via CameraCaptureAccessory.
-6. **Stretch**: sticky notes (tap to pin), notes list grouped by room, client-tap bubble.
+## Open items
 
-## Risks / fallbacks
-- Simulator has no camera → outer accessory may not appear. **Test #5 early.** Fallback: show `ClientView` as side panel, narrate "this is the outer screen on hardware."
-- Apartment perf: trim aggressively; if still slow, bake lighting / reduce further.
+- Verify outer screen on physical iPhone Duo hardware.
+- Add more furniture models.
 
 ## Units
-- Apartment: centimeters, Y-up → scale 0.01.
+- Living room: centimeters, Y-up → scale 0.01.
 - Furniture: `furniture.json` in inches → scale model to (target_inches * 0.0254) / model_native_extent.
 - `sectional_sofa.usdz`: meters, Z-up → rotate -90° on X.

@@ -32,7 +32,7 @@ Prevision/
 
 ## Assets
 
-Bundled USDZ models live in `Prevision/Resources/Models/` (trimmed apartment ~46MB). Raw source assets live in `/Models` at the repo root and are git-ignored.
+Bundled USDZ models live in `Prevision/Resources/Models/` (living room ~7MB, furniture under 1MB each). Raw source assets live in `/Models` at the repo root and are git-ignored.
 
 ## Brand Guide
 
@@ -49,15 +49,17 @@ Furniture catalog is in `Prevision/Data/furniture.json`. Dimensions are in inche
 
 ## Features
 
-**Furniture Placement:** Long-press a furniture tile and drag it to place—a glass card follows your finger. Over the room, it becomes a translucent 3D ghost on the floor. Release to drop it in. Alternatively, tap a tile, then tap the floor to place it.
+**Home:** Designs listed in inset-grouped List. Swipe left to delete; press and hold for Rename or Delete. Settings (gear) at top left; tinted glass "+" at top right creates design (prompts for name).
 
-**Edit Mode:** Press and hold a placed piece to enter edit mode. Drag to move (respects room walls), twist or use the Rotate buttons to rotate, pinch to resize (0.3x to 3x). Tap Set to confirm changes.
+**Designer:** Living-room model (Simple_Modern_Living_Room.usdz) shown dollhouse-style with ceiling hidden. Long-press furniture tile, drag into room; glass card follows finger, translucent 3D ghost appears on floor, releasing drops into edit mode. Edit mode: drag to move, twist or Rotate buttons to rotate, pinch to resize, Set to confirm. Long-press placed piece for Edit or Delete.
 
-**Toolbar:** Back to Designs; Light (sun) opens a vertical glass slider controlling scene brightness (saved per design); More (ellipsis) provides Add Note, Notes, and Recenter.
+**Gestures:** One-finger drag orbits, two-finger drag pans, pinch zooms, double-tap zooms toward a spot (double-tap again when close to zoom out).
 
-**Client Notes:** The client taps the client or outer screen to prompt the designer to add a note there.
+**Toolbar:** Back to Designs; Light (vertical glass brightness slider, saved per design); More menu (Add Note, Notes, Recenter).
 
-**Device Support:** Runs on regular iPhones with a single-screen layout and on iPhone Duo with client view on the top half, designer controls on the bottom half, and outer screen via CameraCaptureAccessory on iOS 27.1. Deployment target is iOS 27.0.
+**Client View:** On iPhone Duo, client view is on outer screen, mirrored via CameraCaptureAccessory (iOS 27.1), rotated 90 degrees for laptop posture (configurable in Settings under Client Screen Rotation). Client can tap outer screen to prompt designer to add a note.
+
+**Deployment:** Regular iPhone uses single-screen layout. iPhone Duo splits at hinge (top inner = client, bottom inner = designer). Deployment target iOS 27.0.
 
 ## Usage
 

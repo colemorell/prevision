@@ -3,64 +3,6 @@ import SwiftUI
 import Combine
 import simd
 
-final class SceneRig {
-    let root = Entity()
-    let camera = PerspectiveCamera()
-    var light: Entity?
-    var directionalLights: [(light: DirectionalLight, base: Float)] = []
-    private weak var owner: Entity?
-    var subscription: EventSubscription?
-
-    private var heartbeat: (entity: Entity, animation: AnimationResource)?
-    private var heartbeatController: AnimationPlaybackController?
-
-    func attach(to holder: Entity) {
-        owner = holder
-        if root.parent !== holder { holder.addChild(root) }
-        startHeartbeat()
-    }
-
-    func keepAttached(to holder: Entity) {
-        guard owner === holder else { return }
-        if root.parent !== holder {
-            holder.addChild(root)
-            startHeartbeat()
-        } else if heartbeat != nil, heartbeatController?.isValid != true || heartbeatController?.isPlaying != true {
-            startHeartbeat()
-        }
-    }
-
-    private func startHeartbeat() {
-        guard let heartbeat else { return }
-        heartbeat.entity.stopAllAnimations()
-        heartbeatController = heartbeat.entity.playAnimation(heartbeat.animation)
-    }
-
-    init() {
-        camera.camera.fieldOfViewInDegrees = SceneController.horizontalFovDegrees
-        camera.camera.fieldOfViewOrientation = .horizontal
-        root.addChild(camera)
-        if !ProcessInfo.processInfo.arguments.contains("-UITests"), let heartbeat = Self.makeHeartbeat() {
-            root.addChild(heartbeat.entity)
-            self.heartbeat = heartbeat
-        }
-    }
-
-    private static func makeHeartbeat() -> (entity: Entity, animation: AnimationResource)? {
-        let pulse = ModelEntity(mesh: .generateBox(size: 0.001), materials: [UnlitMaterial(color: .clear)])
-        pulse.components.set(OpacityComponent(opacity: 0))
-        let spin = FromToByAnimation<Transform>(
-            from: Transform(rotation: simd_quatf(angle: 0, axis: [0, 1, 0])),
-            to: Transform(rotation: simd_quatf(angle: .pi, axis: [0, 1, 0])),
-            duration: 1,
-            bindTarget: .transform,
-            repeatMode: .repeat
-        )
-        guard let resource = try? AnimationResource.generate(with: spin) else { return nil }
-        return (pulse, resource)
-    }
-}
-
 enum InteractionMode {
     case select
     case note
@@ -449,16 +391,16 @@ final class SceneController: ObservableObject {
 
     private func loadEnvironment() async {
         do {
-            let apartment = try await RoomScene.loadApartment()
+            let room = try await RoomScene.loadRoom()
             for rig in rigs {
-                rig.directionalLights = RoomScene.addLighting(to: rig.root).map { ($0, $0.light.intensity) }
+                rig.directionalLights = RoomScene.addLighting(to: rig.root, castsShadows: rig === designer).map { ($0, $0.light.intensity) }
                 rig.light = await Lighting.apply(to: rig.root)
             }
-            let bounds = apartment.visualBounds(relativeTo: nil)
-            let floor = apartment.findEntity(named: RoomScene.floorName)?.visualBounds(relativeTo: nil) ?? bounds
+            let bounds = room.visualBounds(relativeTo: nil)
+            let floor = room.findEntity(named: RoomScene.floorName)?.visualBounds(relativeTo: nil) ?? bounds
             let inset: Float = 0.1
             floorArea = (SIMD2(floor.min.x + inset, floor.min.z + inset), SIMD2(floor.max.x - inset, floor.max.z - inset))
-            add(apartment)
+            add(room)
             let halfWidth = max(bounds.extents.x, bounds.extents.z) / 2
             homeDistance = min(max(halfWidth / tan(Self.horizontalFovDegrees * .pi / 360) * 1.35, 6), 30)
             maxDistance = max(homeDistance * 2, 20)

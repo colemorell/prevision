@@ -30,7 +30,7 @@ private nonisolated final class ThumbnailResumeGuard: @unchecked Sendable {
 }
 
 final class FurnitureLibrary: ObservableObject {
-    static let environmentModels: Set<String> = ["Modern_Apartment", "Simple_Modern_Living_Room"]
+    static let environmentModels: Set<String> = [RoomScene.environmentName]
 
     @Published private(set) var items: [FurnitureItem] = []
     @Published private(set) var thumbnails: [String: UIImage] = [:]
