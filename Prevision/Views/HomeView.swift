@@ -8,44 +8,52 @@ struct HomeView: View {
     @State private var renameText: String = ""
     @State private var pendingDeleteDesign: Design?
     @State private var showSettings = false
-
-    private let columns = [
-        GridItem(.adaptive(minimum: 260, maximum: 420), spacing: Brand.Spacing.m)
-    ]
+    @State private var isNaming = false
+    @State private var newName = ""
 
     var body: some View {
         NavigationStack {
-            ScrollView {
+            Group {
                 if store.designs.isEmpty {
-                    ContentUnavailableView(
-                        "No Designs Yet",
-                        systemImage: "square.3.layers.3d",
-                        description: Text("Create a design to start placing furniture in the apartment.")
-                    )
-                    .containerRelativeFrame(.vertical)
+                    ScrollView {
+                        ContentUnavailableView(
+                            "No Designs Yet",
+                            systemImage: "square.3.layers.3d",
+                            description: Text("Create a design to start placing furniture in the room.")
+                        )
+                        .containerRelativeFrame(.vertical)
+                    }
                 } else {
-                    LazyVGrid(columns: columns, spacing: Brand.Spacing.m) {
+                    List {
                         ForEach(store.designs) { design in
-                            designCard(design)
+                            designRow(design)
                         }
                     }
-                    .padding(Brand.Spacing.m)
+                    .listStyle(.insetGrouped)
                 }
             }
-            .background(Brand.canvas)
             .navigationTitle("Designs")
             .toolbarTitleDisplayMode(.inlineLarge)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Settings", systemImage: "gearshape") { showSettings = true }
                         .tint(.primary)
                 }
-                ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 ToolbarItem(placement: .primaryAction) {
-                    newDesignButton
+                    Button("New Design", systemImage: "plus", action: beginNewDesign)
+                        .buttonStyle(.glassProminent)
+                        .tint(Brand.cta)
+                        .foregroundStyle(.white)
                 }
             }
             .sheet(isPresented: $showSettings) { SettingsView() }
+            .alert("New Design", isPresented: $isNaming) {
+                TextField(store.nextDefaultName(), text: $newName)
+                Button("Cancel", role: .cancel) {}
+                Button("Create", action: createDesign)
+            } message: {
+                Text("Give this design a name.")
+            }
             .alert(
                 "Rename Design",
                 isPresented: Binding(
@@ -74,9 +82,7 @@ struct HomeView: View {
             ) {
                 Button("Delete", role: .destructive) {
                     if let design = pendingDeleteDesign {
-                        withAnimation(Brand.Motion.standard) {
-                            store.delete(design.id)
-                        }
+                        delete(design)
                     }
                     pendingDeleteDesign = nil
                 }
@@ -89,19 +95,24 @@ struct HomeView: View {
         }
     }
 
-    private var newDesignButton: some View {
-        Button("New Design", systemImage: "plus") {
-            withAnimation(Brand.Motion.standard) {
-                let design = store.create(named: store.nextDefaultName())
-                onOpen(design)
-            }
-        }
-        .buttonStyle(.glassProminent)
-        .tint(Brand.cta)
-        .foregroundStyle(.white)
+    private func beginNewDesign() {
+        newName = ""
+        isNaming = true
     }
 
-    private func designCard(_ design: Design) -> some View {
+    private func createDesign() {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let design = store.create(named: trimmed.isEmpty ? store.nextDefaultName() : trimmed)
+        onOpen(design)
+    }
+
+    private func delete(_ design: Design) {
+        withAnimation(Brand.Motion.standard) {
+            store.delete(design.id)
+        }
+    }
+
+    private func designRow(_ design: Design) -> some View {
         Button {
             onOpen(design)
         } label: {
@@ -118,21 +129,22 @@ struct HomeView: View {
                     .font(Brand.Typography.caption)
                     .foregroundStyle(.secondary)
             }
-            .padding(Brand.Spacing.m)
+            .padding(.vertical, Brand.Spacing.xs)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.background, in: RoundedRectangle(cornerRadius: Brand.Radius.card, style: .continuous))
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .contextMenu {
-            Button {
-                beginRename(design)
-            } label: {
-                Label("Rename", systemImage: "pencil")
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button("Delete", systemImage: "trash", role: .destructive) {
+                delete(design)
             }
-            Button(role: .destructive) {
+        }
+        .contextMenu {
+            Button("Rename", systemImage: "square.and.pencil") {
+                beginRename(design)
+            }
+            Button("Delete", systemImage: "trash", role: .destructive) {
                 pendingDeleteDesign = design
-            } label: {
-                Label("Delete", systemImage: "trash")
             }
         }
     }

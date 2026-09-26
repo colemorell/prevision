@@ -10,6 +10,9 @@ final class PrevisionFlowTests: XCTestCase {
         XCTAssertTrue(newDesign.waitForExistence(timeout: 10))
         attach(name: "01-home")
         newDesign.tap()
+        let create = app.buttons["Create"]
+        XCTAssertTrue(create.waitForExistence(timeout: 5))
+        create.tap()
 
         let sofa = app.buttons["Sectional Sofa"].firstMatch
         XCTAssertTrue(sofa.waitForExistence(timeout: 20))

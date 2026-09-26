@@ -8,6 +8,17 @@ final class SceneRig {
     let camera = PerspectiveCamera()
     var light: Entity?
     var directionalLights: [(light: DirectionalLight, base: Float)] = []
+    private weak var owner: Entity?
+    var subscription: EventSubscription?
+
+    func attach(to holder: Entity) {
+        owner = holder
+        if root.parent !== holder { holder.addChild(root) }
+    }
+
+    func keepAttached(to holder: Entity) {
+        if owner === holder, root.parent !== holder { holder.addChild(root) }
+    }
 
     init() {
         camera.camera.fieldOfViewInDegrees = SceneController.horizontalFovDegrees
@@ -350,13 +361,40 @@ final class SceneController: ObservableObject {
         updateCameras()
     }
 
+    func pan(deltaX: Float, deltaY: Float) {
+        let scale = distance * 0.0016
+        let right = SIMD3<Float>(cos(yaw), 0, -sin(yaw))
+        let forward = SIMD3<Float>(-sin(yaw), 0, -cos(yaw))
+        var next = target - right * deltaX * scale + forward * deltaY * scale
+        if let area = floorArea {
+            next.x = min(max(next.x, area.min.x), area.max.x)
+            next.z = min(max(next.z, area.min.y), area.max.y)
+        }
+        target = next
+        updateCameras()
+    }
+
     func orbit(deltaX: Float, deltaY: Float) {
         yaw -= deltaX * 0.008
         pitch = min(max(pitch + deltaY * 0.006, 0.1), 1.45)
         updateCameras()
     }
 
+    func retryLoading(library: FurnitureLibrary) {
+        guard !isLoaded else { return }
+        if loadError != nil {
+            setupTask?.cancel()
+            setupTask = nil
+            loadError = nil
+            let pending = design
+            preload(library: library)
+            if let pending { Task { await open(pending, library: library) } }
+        }
+        revision &+= 1
+    }
+
     func resetCamera() {
+        target = .zero
         yaw = 0
         pitch = 0.95
         distance = homeDistance

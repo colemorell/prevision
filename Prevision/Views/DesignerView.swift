@@ -17,6 +17,9 @@ struct DesignerView: View {
     @State private var showLight = false
     @State private var roomFrame: CGRect = .zero
     @State private var poolDrag: PoolDrag?
+    @State private var isSlowLoad = false
+    @State private var isPanning = false
+    @State private var holder = Entity()
 
     var body: some View {
         NavigationStack {
@@ -87,14 +90,23 @@ struct DesignerView: View {
             ZStack {
                 RealityView { content in
                     content.camera = .virtual
-                    content.add(scene.designer.root)
-                } update: { content in
+                    let rig = scene.designer
+                    let holder = self.holder
+                    content.add(holder)
+                    rig.attach(to: holder)
+                    rig.subscription = content.subscribe(to: SceneEvents.Update.self) { _ in
+                        MainActor.assumeIsolated { rig.keepAttached(to: holder) }
+                    }
+                } update: { _ in
                     _ = scene.revision
-                    if scene.designer.root.scene == nil { content.add(scene.designer.root) }
+                    scene.designer.keepAttached(to: holder)
                 }
                 .background(Brand.canvas)
                 .gesture(dragGesture(in: geo.size))
                 .simultaneousGesture(zoomGesture)
+                .gesture(TwoFingerPan(isPanning: $isPanning) { dx, dy in
+                    if !scene.isEditing { scene.pan(deltaX: Float(dx), deltaY: Float(dy)) }
+                })
                 .simultaneousGesture(rotateGesture)
                 .simultaneousGesture(longPressGesture(in: geo.size))
                 .simultaneousGesture(
@@ -125,14 +137,13 @@ struct DesignerView: View {
                         .transition(.scale(scale: 0.8).combined(with: .opacity))
                 }
 
+                if !scene.isLoaded {
+                    RoomLoadingView(isSlow: isSlowLoad, error: scene.loadError) { scene.retryLoading(library: library) }
+                        .transition(.opacity)
+                }
+
                 VStack {
-                    if !scene.isLoaded {
-                        ProgressView("Loading room…")
-                            .font(Brand.Typography.caption)
-                            .overlayLabel()
-                            .padding(.top, Brand.Spacing.m)
-                    }
-                    if let error = scene.loadError {
+                    if scene.isLoaded, let error = scene.loadError {
                         Text(error)
                             .font(Brand.Typography.caption)
                             .overlayLabel()
@@ -153,6 +164,13 @@ struct DesignerView: View {
                 }
             }
             .animation(Brand.Motion.standard, value: scene.isEditing)
+            .animation(Brand.Motion.standard, value: scene.isLoaded)
+            .task(id: scene.isLoaded) {
+                isSlowLoad = false
+                guard !scene.isLoaded else { return }
+                try? await Task.sleep(for: .seconds(10))
+                if !Task.isCancelled { isSlowLoad = true }
+            }
             .animation(Brand.Motion.standard, value: scene.menuIndex)
         }
     }
@@ -272,7 +290,7 @@ struct DesignerView: View {
             .onChanged { value in
                 if scene.isEditing {
                     scene.dragEditing(from: value.startLocation, to: value.location, viewSize: size)
-                } else {
+                } else if !isPanning {
                     let dx = value.translation.width - lastDrag.width
                     let dy = value.translation.height - lastDrag.height
                     scene.orbit(deltaX: Float(dx), deltaY: Float(dy))
@@ -335,4 +353,41 @@ private struct DesignerFeedback: ViewModifier {
 private struct PoolDrag: Equatable {
     let item: FurnitureItem
     var location: CGPoint
+}
+
+private struct TwoFingerPan: UIGestureRecognizerRepresentable {
+    @Binding var isPanning: Bool
+    let onPan: (CGFloat, CGFloat) -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let recognizer = UIPanGestureRecognizer()
+        recognizer.minimumNumberOfTouches = 2
+        recognizer.maximumNumberOfTouches = 2
+        recognizer.delegate = context.coordinator
+        return recognizer
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        switch recognizer.state {
+        case .began:
+            isPanning = true
+            recognizer.setTranslation(.zero, in: recognizer.view)
+        case .changed:
+            let delta = recognizer.translation(in: recognizer.view)
+            recognizer.setTranslation(.zero, in: recognizer.view)
+            onPan(delta.x, delta.y)
+        default:
+            isPanning = false
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+            true
+        }
+    }
 }
