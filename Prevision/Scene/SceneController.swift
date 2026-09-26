@@ -109,9 +109,10 @@ final class SceneController: ObservableObject {
 
     func preload(library: FurnitureLibrary) {
         guard setupTask == nil else { return }
-        setupTask = Task {
-            await loadEnvironment()
-            for item in library.items {
+        let items = library.items
+        setupTask = Task { await loadEnvironment() }
+        Task {
+            for item in items {
                 _ = try? await prototype(for: item)
             }
         }
@@ -119,9 +120,10 @@ final class SceneController: ObservableObject {
 
     func open(_ design: Design, library: FurnitureLibrary) async {
         preload(library: library)
-        await setupTask?.value
         clearDesign()
         self.design = design
+        await setupTask?.value
+        guard self.design?.id == design.id else { return }
         for placement in design.placements {
             guard let item = library.item(withID: placement.itemID) else { continue }
             await spawn(item, id: placement.id, at: placement.position, yaw: placement.yaw, scale: placement.scale, animated: false)
@@ -404,15 +406,15 @@ final class SceneController: ObservableObject {
     private func loadEnvironment() async {
         do {
             let apartment = try await RoomScene.loadApartment()
+            for rig in rigs {
+                rig.directionalLights = RoomScene.addLighting(to: rig.root).map { ($0, $0.light.intensity) }
+                rig.light = await Lighting.apply(to: rig.root)
+            }
             let bounds = apartment.visualBounds(relativeTo: nil)
             let floor = apartment.findEntity(named: RoomScene.floorName)?.visualBounds(relativeTo: nil) ?? bounds
             let inset: Float = 0.1
             floorArea = (SIMD2(floor.min.x + inset, floor.min.z + inset), SIMD2(floor.max.x - inset, floor.max.z - inset))
             add(apartment)
-            for rig in rigs {
-                rig.directionalLights = RoomScene.addLighting(to: rig.root).map { ($0, $0.light.intensity) }
-                rig.light = await Lighting.apply(to: rig.root)
-            }
             let halfWidth = max(bounds.extents.x, bounds.extents.z) / 2
             homeDistance = min(max(halfWidth / tan(Self.horizontalFovDegrees * .pi / 360) * 1.35, 6), 30)
             maxDistance = max(homeDistance * 2, 20)
