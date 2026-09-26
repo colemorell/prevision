@@ -7,6 +7,7 @@ struct HomeView: View {
     @State private var renamingDesign: Design?
     @State private var renameText: String = ""
     @State private var pendingDeleteDesign: Design?
+    @State private var showSettings = false
 
     private let columns = [
         GridItem(.adaptive(minimum: 260, maximum: 420), spacing: Brand.Spacing.m)
@@ -14,35 +15,38 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            ScrollView {
                 if store.designs.isEmpty {
                     ContentUnavailableView(
                         "No Designs Yet",
                         systemImage: "square.3.layers.3d",
                         description: Text("Create a design to start placing furniture in the apartment.")
                     )
-                    .safeAreaInset(edge: .bottom) {
-                        newDesignButton
-                            .padding(Brand.Spacing.m)
-                    }
+                    .containerRelativeFrame(.vertical)
                 } else {
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: Brand.Spacing.m) {
-                            ForEach(store.designs) { design in
-                                designCard(design)
-                            }
+                    LazyVGrid(columns: columns, spacing: Brand.Spacing.m) {
+                        ForEach(store.designs) { design in
+                            designCard(design)
                         }
-                        .padding(Brand.Spacing.m)
                     }
-                    .safeAreaInset(edge: .bottom) {
-                        newDesignButton
-                            .padding(Brand.Spacing.m)
-                    }
+                    .padding(Brand.Spacing.m)
                 }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .safeAreaInset(edge: .bottom) {
+                newDesignButton
+                    .padding(Brand.Spacing.m)
             }
             .background(Brand.canvas)
             .navigationTitle("Designs")
-            .tint(.primary)
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Settings", systemImage: "gearshape") { showSettings = true }
+                        .tint(.primary)
+                }
+            }
+            .sheet(isPresented: $showSettings) { SettingsView() }
             .alert(
                 "Rename Design",
                 isPresented: Binding(
@@ -93,11 +97,11 @@ struct HomeView: View {
                 onOpen(design)
             }
         } label: {
-            Label("New Design", systemImage: "plus")
+            Text("New Design")
                 .font(Brand.Typography.label)
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.glassProminent)
         .tint(Brand.cta)
         .controlSize(.large)
     }
@@ -134,18 +138,6 @@ struct HomeView: View {
                 pendingDeleteDesign = design
             } label: {
                 Label("Delete", systemImage: "trash")
-            }
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) {
-                pendingDeleteDesign = design
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-            Button {
-                beginRename(design)
-            } label: {
-                Label("Rename", systemImage: "pencil")
             }
         }
     }

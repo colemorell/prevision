@@ -24,19 +24,11 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1FC9B371E7A5B60FE6188CB9 /* Prevision */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
 			path = Prevision;
 			sourceTree = "<group>";
 		};
 		31AA75742265E3CA7E49D369 /* PrevisionUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
 			path = PrevisionUITests;
 			sourceTree = "<group>";
 		};

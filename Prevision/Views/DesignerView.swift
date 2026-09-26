@@ -17,10 +17,20 @@ struct DesignerView: View {
 
     var body: some View {
         NavigationStack {
-            HStack(spacing: 0) {
-                room
-                AssetPoolView()
-                    .frame(width: 180)
+            GeometryReader { geo in
+                if geo.size.width > 560 {
+                    HStack(spacing: 0) {
+                        room
+                        AssetPoolView(axis: .vertical)
+                            .frame(width: 180)
+                    }
+                } else {
+                    VStack(spacing: 0) {
+                        room
+                        AssetPoolView(axis: .horizontal)
+                            .frame(height: 170)
+                    }
+                }
             }
             .navigationTitle(scene.design?.name ?? "")
             .navigationBarTitleDisplayMode(.inline)
@@ -102,14 +112,11 @@ struct DesignerView: View {
                     }
                     Spacer()
                     if capture.isRunning {
-                        HStack {
-                            CameraPreviewView(session: capture.session)
-                                .frame(width: 60, height: 80)
-                                .clipShape(.rect(cornerRadius: Brand.Radius.control))
-                                .accessibilityLabel("Camera preview")
-                            Spacer()
-                        }
-                        .padding(Brand.Spacing.s)
+                        CameraPreviewView(session: capture.session)
+                            .frame(width: 1, height: 1)
+                            .opacity(0.02)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                     }
                 }
             }

@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 struct AssetPoolView: View {
     @EnvironmentObject var library: FurnitureLibrary
     @EnvironmentObject var scene: SceneController
+    var axis: Axis = .vertical
     @State private var showImporter = false
     @State private var importError: String?
 
@@ -20,10 +21,14 @@ struct AssetPoolView: View {
             .padding(.horizontal, Brand.Spacing.m)
             .padding(.vertical, Brand.Spacing.s)
 
-            ScrollView {
-                LazyVStack(spacing: Brand.Spacing.s) {
+            ScrollView(axis == .vertical ? .vertical : .horizontal, showsIndicators: false) {
+                let layout = axis == .vertical
+                    ? AnyLayout(VStackLayout(spacing: Brand.Spacing.s))
+                    : AnyLayout(HStackLayout(spacing: Brand.Spacing.s))
+                layout {
                     ForEach(library.items) { item in
                         AssetTile(item: item, thumbnail: library.thumbnails[item.id], isArmed: scene.armedItem?.id == item.id)
+                            .frame(width: axis == .vertical ? nil : 96)
                             .onTapGesture { scene.arm(item) }
                             .draggable(item.id) {
                                 AssetTile(item: item, thumbnail: library.thumbnails[item.id], isArmed: true)

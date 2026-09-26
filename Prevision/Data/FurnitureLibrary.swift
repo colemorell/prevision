@@ -16,6 +16,19 @@ private struct FurnitureOverridesFile: Codable {
     let overrides: [String: FurnitureOverride]
 }
 
+private nonisolated final class ThumbnailResumeGuard: @unchecked Sendable {
+    private let lock = NSLock()
+    private var didResume = false
+
+    func resume(with image: UIImage?, continuation: CheckedContinuation<UIImage?, Never>) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !didResume else { return }
+        didResume = true
+        continuation.resume(returning: image)
+    }
+}
+
 final class FurnitureLibrary: ObservableObject {
     static let environmentModels: Set<String> = ["Modern_Apartment"]
 
@@ -96,20 +109,46 @@ final class FurnitureLibrary: ObservableObject {
         if let data = try? Data(contentsOf: cacheURL), let image = UIImage(data: data) {
             return image
         }
+        guard let image = await Self.requestThumbnail(for: item) else { return nil }
+        try? image.pngData()?.write(to: cacheURL)
+        return image
+    }
+
+    private nonisolated static func requestThumbnail(for item: FurnitureItem) async -> UIImage? {
+        if let image = await Self.quickLookThumbnail(forFileAt: item.url) {
+            return image
+        }
+        return await ThumbnailRenderer.render(modelAt: item.url, zUp: item.zUp)
+    }
+
+    private nonisolated static func quickLookThumbnail(forFileAt url: URL) async -> UIImage? {
+        await withTaskGroup(of: UIImage?.self) { group in
+            group.addTask {
+                await Self.quickLookRepresentation(forFileAt: url)
+            }
+            group.addTask {
+                try? await Task.sleep(for: .seconds(2))
+                return nil
+            }
+            let result = await group.next() ?? nil
+            group.cancelAll()
+            return result
+        }
+    }
+
+    private nonisolated static func quickLookRepresentation(forFileAt url: URL) async -> UIImage? {
         let request = QLThumbnailGenerator.Request(
-            fileAt: item.url,
+            fileAt: url,
             size: CGSize(width: 240, height: 240),
             scale: 3.0,
             representationTypes: .thumbnail
         )
-        let generated: UIImage? = await withCheckedContinuation { continuation in
+        return await withCheckedContinuation { (continuation: CheckedContinuation<UIImage?, Never>) in
+            let resumeGuard = ThumbnailResumeGuard()
             QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { representation, _ in
-                continuation.resume(returning: representation?.uiImage)
+                resumeGuard.resume(with: representation?.uiImage, continuation: continuation)
             }
         }
-        guard let image = generated else { return nil }
-        try? image.pngData()?.write(to: cacheURL)
-        return image
     }
 
     private static func isUSDZ(_ url: URL) -> Bool {
