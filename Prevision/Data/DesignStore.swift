@@ -62,10 +62,6 @@ final class DesignStore: ObservableObject {
         persist()
     }
 
-    func design(withID id: UUID) -> Design? {
-        designs.first { $0.id == id }
-    }
-
     func nextDefaultName() -> String {
         let existingNames = Set(designs.map(\.name))
         var index = 1

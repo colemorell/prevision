@@ -66,7 +66,6 @@ nonisolated final class SessionBox: @unchecked Sendable {
 
 final class CaptureSessionController: ObservableObject {
     @Published private(set) var isRunning = false
-    @Published private(set) var authorizationDenied = false
 
     private let box = SessionBox()
     var session: AVCaptureSession { box.session }
@@ -77,20 +76,13 @@ final class CaptureSessionController: ObservableObject {
         case .authorized:
             break
         case .notDetermined:
-            let granted = await AVCaptureDevice.requestAccess(for: .video)
-            guard granted else {
-                authorizationDenied = true
-                return
-            }
+            guard await AVCaptureDevice.requestAccess(for: .video) else { return }
         case .denied, .restricted:
-            authorizationDenied = true
             return
         @unknown default:
-            authorizationDenied = true
             return
         }
 
-        authorizationDenied = false
         observeSessionNotifications()
 
         isRunning = await box.start()
