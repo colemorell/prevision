@@ -2,12 +2,12 @@ import SwiftUI
 import RealityKit
 
 struct ClientView: View {
-    @EnvironmentObject var scene: SceneController
+    let rig: SceneRig
 
     var body: some View {
         RealityView { content in
             content.camera = .virtual
-            content.add(scene.client.root)
+            content.add(rig.root)
         }
         .background(Brand.canvas)
     }

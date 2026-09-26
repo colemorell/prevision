@@ -2,7 +2,7 @@ name: Prevision
 options:
   bundleIdPrefix: com.colemorell
   deploymentTarget:
-    iOS: "27.0"
+    iOS: "27.1"
   createIntermediateGroups: true
 settings:
   base:
@@ -32,3 +32,27 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: 857MZR9QLJ
+  PrevisionUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: PrevisionUITests
+        type: syncedFolder
+    dependencies:
+      - target: Prevision
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 857MZR9QLJ
+        TEST_TARGET_NAME: Prevision
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+schemes:
+  Prevision:
+    build:
+      targets:
+        Prevision: all
+        PrevisionUITests: [test]
+    test:
+      targets:
+        - PrevisionUITests

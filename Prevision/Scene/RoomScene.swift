@@ -3,8 +3,13 @@ import Foundation
 import simd
 
 enum RoomScene {
+    static let hiddenForDollhouse = ["Plane_002_White1_0", "Plane_002_Black_001_0"]
+
     static func loadApartment() async throws -> Entity {
         let apartment = try await Entity(named: "Modern_Apartment", in: Bundle.main)
+        for name in hiddenForDollhouse {
+            apartment.findEntity(named: name)?.isEnabled = false
+        }
         let container = Entity()
         container.name = "Apartment"
         container.addChild(apartment)

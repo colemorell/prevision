@@ -6,7 +6,18 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		9DF12DD77ABB8B3F7CAC9F43 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 28474C0A36F70EBEF5FF9FD8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 51870B29A06CFE3235869E9B;
+			remoteInfo = Prevision;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		0938C384B7EE07B93EB78772 /* PrevisionUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PrevisionUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		910BFEF5849D5926F2B2DECB /* Prevision.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Prevision.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -20,6 +31,15 @@
 			path = Prevision;
 			sourceTree = "<group>";
 		};
+		31AA75742265E3CA7E49D369 /* PrevisionUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = PrevisionUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXGroup section */
@@ -27,6 +47,7 @@
 			isa = PBXGroup;
 			children = (
 				910BFEF5849D5926F2B2DECB /* Prevision.app */,
+				0938C384B7EE07B93EB78772 /* PrevisionUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -35,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				1FC9B371E7A5B60FE6188CB9 /* Prevision */,
+				31AA75742265E3CA7E49D369 /* PrevisionUITests */,
 				493D0C9006E747539606FA2A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -42,6 +64,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0A760222996ADD3CCBC74866 /* PrevisionUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 54A822D33061DCA4DDBDC1C7 /* Build configuration list for PBXNativeTarget "PrevisionUITests" */;
+			buildPhases = (
+				192C382BAEFE2A51CDEFDA5C /* Sources */,
+				754FAA26D6C8341C6279793D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6223ADE88E7D1BBF3453A517 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				31AA75742265E3CA7E49D369 /* PrevisionUITests */,
+			);
+			name = PrevisionUITests;
+			packageProductDependencies = (
+			);
+			productName = PrevisionUITests;
+			productReference = 0938C384B7EE07B93EB78772 /* PrevisionUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		51870B29A06CFE3235869E9B /* Prevision */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = E9EEA4840B83EC1C7DFCF565 /* Build configuration list for PBXNativeTarget "Prevision" */;
@@ -72,6 +116,11 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					0A760222996ADD3CCBC74866 = {
+						DevelopmentTeam = 857MZR9QLJ;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 51870B29A06CFE3235869E9B;
+					};
 					51870B29A06CFE3235869E9B = {
 						DevelopmentTeam = 857MZR9QLJ;
 						ProvisioningStyle = Automatic;
@@ -93,6 +142,7 @@
 			projectRoot = "";
 			targets = (
 				51870B29A06CFE3235869E9B /* Prevision */,
+				0A760222996ADD3CCBC74866 /* PrevisionUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -105,9 +155,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		754FAA26D6C8341C6279793D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		192C382BAEFE2A51CDEFDA5C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B8B291CD8618587550FDE827 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -117,7 +181,55 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		6223ADE88E7D1BBF3453A517 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 51870B29A06CFE3235869E9B /* Prevision */;
+			targetProxy = 9DF12DD77ABB8B3F7CAC9F43 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		3F64B22D36514600FB7BCE5E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 857MZR9QLJ;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.colemorell.PrevisionUITests;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Prevision;
+			};
+			name = Release;
+		};
+		62683CC683E95F2EFA9A0F68 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 857MZR9QLJ;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.colemorell.PrevisionUITests;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Prevision;
+			};
+			name = Debug;
+		};
 		916F5C5A9C12372C6A8D5D3E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -212,7 +324,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.1;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -278,7 +390,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.1;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -296,6 +408,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		54A822D33061DCA4DDBDC1C7 /* Build configuration list for PBXNativeTarget "PrevisionUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				62683CC683E95F2EFA9A0F68 /* Debug */,
+				3F64B22D36514600FB7BCE5E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		E9EEA4840B83EC1C7DFCF565 /* Build configuration list for PBXNativeTarget "Prevision" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

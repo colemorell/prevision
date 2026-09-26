@@ -32,6 +32,9 @@ final class SceneController: ObservableObject {
 
     let designer = SceneRig()
     let client = SceneRig()
+    let outer = SceneRig()
+
+    private var rigs: [SceneRig] { [designer, client, outer] }
 
     private var target = SIMD3<Float>(0, 1, 0)
     private var distance: Float = 12
@@ -40,7 +43,7 @@ final class SceneController: ObservableObject {
     private var minDistance: Float = 1.5
     private var maxDistance: Float = 40
 
-    private var placed: [(designer: Entity, client: Entity)] = []
+    private var placed: [[Entity]] = []
     private var selectedIndex: Int?
     private var didSetup = false
 
@@ -50,13 +53,11 @@ final class SceneController: ObservableObject {
         do {
             let apartment = try await RoomScene.loadApartment()
             let bounds = apartment.visualBounds(relativeTo: nil)
-            designer.root.addChild(apartment)
-            client.root.addChild(apartment.clone(recursive: true))
+            add(apartment)
 
             let floorSize = SIMD2<Float>(max(bounds.extents.x, 10) * 2, max(bounds.extents.z, 10) * 2)
             designer.root.addChild(RoomScene.makeFloor(size: floorSize))
-            RoomScene.addLighting(to: designer.root)
-            RoomScene.addLighting(to: client.root)
+            rigs.forEach { RoomScene.addLighting(to: $0.root) }
 
             target = SIMD3<Float>(0, min(bounds.extents.y * 0.3, 1.2), 0)
             distance = min(max(bounds.extents.max() * 0.9, 6), 30)
@@ -88,15 +89,13 @@ final class SceneController: ObservableObject {
         do {
             let model = try await RaycastPlacement.loadModel(for: item)
             model.position = worldPoint + SIMD3<Float>(0, 0.4, 0)
-            let mirror = model.clone(recursive: true)
-            designer.root.addChild(model)
-            client.root.addChild(mirror)
-            for entity in [model, mirror] {
+            let copies = add(model)
+            for entity in copies {
                 var landed = entity.transform
                 landed.translation = worldPoint
                 entity.move(to: landed, relativeTo: entity.parent, duration: Brand.Motion.placementDuration, timingFunction: .easeInOut)
             }
-            placed.append((model, mirror))
+            placed.append(copies)
             selectedIndex = placed.count - 1
             placedCount = placed.count
         } catch {
@@ -107,14 +106,13 @@ final class SceneController: ObservableObject {
     func rotateSelected(by radians: Float) {
         guard let index = selectedIndex, placed.indices.contains(index) else { return }
         let delta = simd_quatf(angle: radians, axis: [0, 1, 0])
-        placed[index].designer.orientation = delta * placed[index].designer.orientation
-        placed[index].client.orientation = placed[index].designer.orientation
+        let orientation = delta * placed[index][0].orientation
+        placed[index].forEach { $0.orientation = orientation }
     }
 
     func removeLast() {
         guard let last = placed.popLast() else { return }
-        last.designer.removeFromParent()
-        last.client.removeFromParent()
+        last.forEach { $0.removeFromParent() }
         selectedIndex = placed.isEmpty ? nil : placed.count - 1
         placedCount = placed.count
     }
@@ -127,9 +125,7 @@ final class SceneController: ObservableObject {
         notes.append(Note(text: trimmed, position: point, room: room))
         let pin = Self.makePin()
         pin.position = point
-        designer.root.addChild(pin)
-        let mirror = pin.clone(recursive: true)
-        client.root.addChild(mirror)
+        add(pin)
     }
 
     func zoom(by factor: Float) {
@@ -143,11 +139,16 @@ final class SceneController: ObservableObject {
         updateCameras()
     }
 
+    @discardableResult
+    private func add(_ entity: Entity) -> [Entity] {
+        let copies = [entity] + rigs.dropFirst().map { _ in entity.clone(recursive: true) }
+        zip(rigs, copies).forEach { $0.root.addChild($1) }
+        return copies
+    }
+
     private func updateCameras() {
         let offset = SIMD3<Float>(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw)) * distance
-        for rig in [designer, client] {
-            rig.camera.look(at: target, from: target + offset, relativeTo: nil)
-        }
+        rigs.forEach { $0.camera.look(at: target, from: target + offset, relativeTo: nil) }
     }
 
     private static func makePin() -> Entity {

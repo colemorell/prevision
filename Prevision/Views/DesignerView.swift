@@ -4,7 +4,6 @@ import RealityKit
 struct DesignerView: View {
     @EnvironmentObject var catalog: FurnitureCatalog
     @EnvironmentObject var scene: SceneController
-    @EnvironmentObject var externalDisplay: ExternalDisplayManager
 
     @State private var showNotes = false
     @State private var lastMagnification: CGFloat = 1
