@@ -92,6 +92,7 @@ final class SceneController: ObservableObject {
     private var ghostItemID: String?
     private var floorArea: (min: SIMD2<Float>, max: SIMD2<Float>)?
     private var grabStart: CGPoint?
+    private var cameraAnimation: Task<Void, Never>?
     private var grabOffset = SIMD3<Float>.zero
     private let selectionRing = SceneController.makeSelectionRing()
 
@@ -361,6 +362,34 @@ final class SceneController: ObservableObject {
     func zoom(by factor: Float) {
         distance = min(max(distance / factor, minDistance), maxDistance)
         updateCameras()
+    }
+
+    func zoomToward(_ location: CGPoint, viewSize: CGSize) {
+        if distance <= minDistance * 2 || distance < homeDistance * 0.3 {
+            animateCamera(to: .zero, distance: homeDistance, pitch: 0.95)
+            return
+        }
+        guard let point = floorPoint(for: designer, at: location, viewSize: viewSize) else { return }
+        let focus = clamped(point)
+        animateCamera(to: target + (focus - target) * 0.6, distance: max(distance / 1.8, minDistance), pitch: pitch)
+    }
+
+    private func animateCamera(to newTarget: SIMD3<Float>, distance newDistance: Float, pitch newPitch: Float) {
+        cameraAnimation?.cancel()
+        let startTarget = target, startDistance = distance, startPitch = pitch
+        cameraAnimation = Task {
+            let frames = 24
+            for frame in 1...frames {
+                if Task.isCancelled { return }
+                let t = Float(frame) / Float(frames)
+                let eased = t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2
+                target = startTarget + (newTarget - startTarget) * eased
+                distance = startDistance + (newDistance - startDistance) * eased
+                pitch = startPitch + (newPitch - startPitch) * eased
+                updateCameras()
+                try? await Task.sleep(for: .milliseconds(14))
+            }
+        }
     }
 
     func pan(deltaX: Float, deltaY: Float) {

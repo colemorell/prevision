@@ -110,9 +110,11 @@ struct DesignerView: View {
                 .simultaneousGesture(rotateGesture)
                 .simultaneousGesture(longPressGesture(in: geo.size))
                 .simultaneousGesture(
-                    SpatialTapGesture().onEnded { value in
-                        scene.handleTap(at: value.location, viewSize: geo.size)
-                    }
+                    SpatialTapGesture(count: 2)
+                        .onEnded { value in scene.zoomToward(value.location, viewSize: geo.size) }
+                        .exclusively(before: SpatialTapGesture().onEnded { value in
+                            scene.handleTap(at: value.location, viewSize: geo.size)
+                        })
                 )
                 .accessibilityLabel("Room")
                 .accessibilityHint("Drag to orbit, pinch to zoom. Long press a piece to edit or delete it.")
