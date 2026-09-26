@@ -4,6 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject var library: FurnitureLibrary
     @EnvironmentObject var store: DesignStore
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("clientScreenRotation") private var clientRotation = 90.0
 
     private var version: String {
         let info = Bundle.main.infoDictionary
@@ -25,6 +26,17 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 } header: {
                     Text("Adding Furniture")
+                }
+                Section {
+                    Picker("Client Screen Rotation", selection: $clientRotation) {
+                        Text("Right").tag(90.0)
+                        Text("Left").tag(-90.0)
+                        Text("None").tag(0.0)
+                    }
+                } header: {
+                    Text("Client Screen")
+                } footer: {
+                    Text("Turns the outer screen so the client sees the room upright when the phone stands open like a laptop.")
                 }
                 Section("About") {
                     LabeledContent("Version", value: version)

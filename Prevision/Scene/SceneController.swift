@@ -11,25 +11,38 @@ final class SceneRig {
     private weak var owner: Entity?
     var subscription: EventSubscription?
 
+    private var heartbeat: (entity: Entity, animation: AnimationResource)?
+
     func attach(to holder: Entity) {
         owner = holder
         if root.parent !== holder { holder.addChild(root) }
+        startHeartbeat()
     }
 
     func keepAttached(to holder: Entity) {
-        if owner === holder, root.parent !== holder { holder.addChild(root) }
+        if owner === holder, root.parent !== holder {
+            holder.addChild(root)
+            startHeartbeat()
+        }
+    }
+
+    private func startHeartbeat() {
+        guard let heartbeat else { return }
+        heartbeat.entity.stopAllAnimations()
+        heartbeat.entity.playAnimation(heartbeat.animation)
     }
 
     init() {
         camera.camera.fieldOfViewInDegrees = SceneController.horizontalFovDegrees
         camera.camera.fieldOfViewOrientation = .horizontal
         root.addChild(camera)
-        if !ProcessInfo.processInfo.arguments.contains("-UITests") {
-            root.addChild(Self.makeHeartbeat())
+        if !ProcessInfo.processInfo.arguments.contains("-UITests"), let heartbeat = Self.makeHeartbeat() {
+            root.addChild(heartbeat.entity)
+            self.heartbeat = heartbeat
         }
     }
 
-    private static func makeHeartbeat() -> Entity {
+    private static func makeHeartbeat() -> (entity: Entity, animation: AnimationResource)? {
         let pulse = ModelEntity(mesh: .generateBox(size: 0.001), materials: [UnlitMaterial(color: .clear)])
         pulse.components.set(OpacityComponent(opacity: 0))
         let spin = FromToByAnimation<Transform>(
@@ -39,10 +52,8 @@ final class SceneRig {
             bindTarget: .transform,
             repeatMode: .repeat
         )
-        if let resource = try? AnimationResource.generate(with: spin) {
-            pulse.playAnimation(resource)
-        }
-        return pulse
+        guard let resource = try? AnimationResource.generate(with: spin) else { return nil }
+        return (pulse, resource)
     }
 }
 
